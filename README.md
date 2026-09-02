@@ -1,49 +1,39 @@
 # python-utils-98
 
-A collection of Python utility functions designed to simplify everyday programming tasks. With a focus on common functionalities, this library helps streamline your workflow and improve code readability.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+python-utils-98 is a lightweight collection of general-purpose Python utilities for everyday development tasks. It provides reliable, dependency-free helpers that reduce boilerplate in file handling, data processing, and performance monitoring.
 
 ## Features
 
-- **String Manipulation**: Effortlessly format, split, and sanitize strings with utility functions that handle common text processing tasks.
-- **File Operations**: Simplify file reading, writing, and path management with easy-to-use methods that support both local and cloud storage.
-- **Date and Time Utilities**: Work seamlessly with date and time objects, including formatting, parsing, and calculating time differences.
-- **Data Validation**: Quickly validate inputs such as email addresses, phone numbers, and other common data types to ensure data integrity.
+- Safe file operations with automatic directory creation and encoding detection
+- Date and time utilities for parsing, formatting, and relative calculations
+- Configuration loader that merges JSON, YAML, and environment variables
+- Decorators for retry logic with exponential backoff and execution timing
 
 ## Installation
-
-To install the python-utils-98 package, you can use pip. Run the following command in your terminal:
 
 ```bash
 pip install python-utils-98
 ```
 
-## Basic Usage
-
-Here’s a quick example demonstrating some of the capabilities of python-utils-98:
+## Usage
 
 ```python
-from python_utils import StringUtils, FileUtils, DateUtils
+from python_utils_98 import read_file, load_config, Timer
 
-# String manipulation
-formatted_str = StringUtils.capitalize_words("hello world!")
-print(formatted_str)  # Output: Hello World!
+# Read file with automatic directory handling
+content = read_file("data/input.txt")
 
-# File operations
-FileUtils.write_file("example.txt", "This is a sample text.")
-file_content = FileUtils.read_file("example.txt")
-print(file_content)  # Output: This is a sample text.
+# Load merged configuration
+config = load_config("config.json", env_prefix="APP_")
 
-# Date utilities
-today = DateUtils.get_today()
-print(today)  # Output: Current date in YYYY-MM-DD format
-
-# Data validation
-is_valid_email = StringUtils.validate_email("example@gmail.com")
-print(is_valid_email)  # Output: True
+# Measure execution time
+with Timer() as t:
+    result = process_data()
+print(f"Done in {t.elapsed:.2f}s")
 ```
 
 ## License
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Released under the MIT License.
