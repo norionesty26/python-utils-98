@@ -1,24 +1,30 @@
-import time
-import functools
+import json
+import os
+from typing import Any, Dict, Optional
 
-def retry(
-    max_attempts=5,
-    delay=1.0,
-    backoff=2.0,
-    exceptions=(Exception,)
-):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            current_delay = delay
-            for attempt in range(max_attempts):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions:
-                    if attempt == max_attempts - 1:
-                        raise
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            return None
-        return wrapper
-    return decorator
+def load_json(filepath: str) -> Dict[str, Any]:
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r') as f:
+        return json.load(f)
+
+def save_json(filepath: str, data: Dict[str, Any]) -> None:
+    with open(filepath, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def get_env_var(key: str, default: Optional[str] = None) -> str:
+    return os.getenv(key, default) or ''
+
+def chunk_list(data: list, size: int):
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
+
+def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
