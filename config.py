@@ -2,23 +2,29 @@ import json
 import os
 from typing import Any, Dict
 
-class ConfigLoader:
-    def __init__(self, defaults: Dict[str, Any] = None):
-        self._defaults = defaults or {}
-        self._config = self._defaults.copy()
+def load_config(path: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    if not os.path.exists(path):
+        return defaults
 
-    def load_from_json(self, file_path: str) -> None:
-        if not os.path.exists(file_path):
-            return
-        with open(file_path, 'r') as f:
+    try:
+        with open(path, 'r') as f:
             data = json.load(f)
-            self._config.update(data)
+    except (json.JSONDecodeError, IOError):
+        return defaults
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._config.get(key, default)
+    config = defaults.copy()
+    config.update({k: v for k, v in data.items() if k in defaults})
+    return config
 
-    def __getitem__(self, key: str) -> Any:
-        return self._config[key]
-
-    def __repr__(self) -> str:
-        return f"ConfigLoader(config={self._config})"
+def update_config(path: str, new_values: Dict[str, Any]) -> None:
+    config = {}
+    if os.path.exists(path):
+        try:
+            with open(path, 'r') as f:
+                config = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    
+    config.update(new_values)
+    with open(path, 'w') as f:
+        json.dump(config, f, indent=4)
