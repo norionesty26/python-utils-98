@@ -1,29 +1,47 @@
-import time
-import functools
-from typing import Callable, Any, Type, Tuple
+from typing import Any, Dict, List
 
-def retry(exceptions: Tuple[Type[Exception], ...], 
-          retries: int = 3, 
-          delay: float = 1.0, 
-          backoff: float = 2.0) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for i in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions:
-                    if i == retries - 1:
-                        raise
-                    time.sleep(current_delay)
-                    current_delay *= backoff
-            return None
-        return wrapper
-    return decorator
 
-class NetworkProcessor:
-    @retry(exceptions=(ConnectionError, TimeoutError), retries=3)
-    def fetch_data(self, url: str) -> str:
-        # Simulate network logic
-        return f"data from {url}"
+class ValidationError(Exception):
+    pass
+
+
+def validate_record(record: Dict[str, Any]) -> bool:
+    if not isinstance(record, dict):
+        raise ValidationError("Record must be a dictionary")
+    if "id" not in record or not isinstance(record["id"], (int, str)):
+        raise ValidationError("Record must contain a valid 'id'")
+    if "data" not in record:
+        raise ValidationError("Record must contain a 'data' field")
+    return True
+
+
+def process_batch(batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    processed = []
+    for item in batch:
+        try:
+            validate_record(item)
+            result = {
+                "id": item["id"],
+                "status": "processed",
+                "payload": str(item["data"]).strip().upper(),
+            }
+            processed.append(result)
+        except ValidationError as err:
+            processed.append(
+                {"id": item.get("id"), "status": "failed", "error": str(err)}
+            )
+    return processed
+
+
+def run_processor(payloads: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not isinstance(payloads, list):
+        raise TypeError("Input payloads must be a list")
+
+    results = process_batch(payloads)
+    success_count = sum(1 for r in results if r["status"] == "processed")
+    return {
+        "total": len(payloads),
+        "successful": success_count,
+        "failed": len(payloads) - success_count,
+        "results": results,
+    }
