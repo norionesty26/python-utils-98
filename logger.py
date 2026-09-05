@@ -1,25 +1,46 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+import sys
+from typing import Optional
 
-def setup_logger(name: str = 'root', log_file: str = 'app.log', level: int = logging.INFO, max_bytes: int = 10485760, backup_count: int = 5) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    if not logger.handlers:
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-        dir_path = os.path.dirname(log_file)
-        if dir_path and not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    return logger
 
-if __name__ == '__main__':
-    logger = setup_logger('myapp')
-    logger.info('Application started')
-    for i in range(50):
-        logger.info('Processing item %d', i)
+class SafeLogger:
+    def __init__(
+        self, name: str, log_file: Optional[str] = None, level: int = logging.INFO
+    ):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        self.logger.handlers.clear()
+
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+
+        stream_handler = logging.StreamHandler(sys.stderr)
+        stream_handler.setFormatter(formatter)
+        self.logger.addHandler(stream_handler)
+
+        if log_file:
+            try:
+                log_dir = os.path.dirname(os.path.abspath(log_file))
+                if log_dir:
+                    os.makedirs(log_dir, exist_ok=True)
+                file_handler = logging.FileHandler(log_file, encoding="utf-8")
+                file_handler.setFormatter(formatter)
+                self.logger.addHandler(file_handler)
+            except (OSError, PermissionError) as err:
+                self.logger.warning(
+                    f"Failed to initialize file logger at {log_file} ({err}). Falling back to stderr."
+                )
+
+    def info(self, msg: str, *args, **kwargs):
+        self.logger.info(msg, *args, **kwargs)
+
+    def warning(self, msg: str, *args, **kwargs):
+        self.logger.warning(msg, *args, **kwargs)
+
+    def error(self, msg: str, *args, **kwargs):
+        self.logger.error(msg, *args, **kwargs)
+
+    def debug(self, msg: str, *args, **kwargs):
+        self.logger.debug(msg, *args, **kwargs)
