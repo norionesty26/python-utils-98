@@ -1,30 +1,42 @@
-import json
 import os
-from typing import Any, Dict, Optional
+import shutil
+from typing import List, Optional
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        return json.load(f)
+def ensure_dir(path: str) -> None:
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-def save_json(filepath: str, data: Dict[str, Any]) -> None:
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
+def cleanup_temp_files(directory: str, pattern: Optional[str] = None) -> List[str]:
+    deleted_files = []
+    if not os.path.exists(directory):
+        return deleted_files
 
-def get_env_var(key: str, default: Optional[str] = None) -> str:
-    return os.getenv(key, default) or ''
+    for filename in os.listdir(directory):
+        if pattern and pattern not in filename:
+            continue
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+                deleted_files.append(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+                deleted_files.append(file_path)
+        except OSError:
+            continue
+    return deleted_files
 
-def chunk_list(data: list, size: int):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+def get_file_stats(path: str) -> dict:
+    stat = os.stat(path)
+    return {
+        'size': stat.st_size,
+        'mode': oct(stat.st_mode),
+        'modified': stat.st_mtime
+    }
 
-def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def list_files_recursive(directory: str) -> List[str]:
+    file_list = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            file_list.append(os.path.join(root, file))
+    return file_list
