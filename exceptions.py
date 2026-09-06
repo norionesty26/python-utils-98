@@ -1,50 +1,41 @@
-import traceback
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Dict, Optional
 
-class UtilsError(Exception):
-    pass
 
-class ValidationError(UtilsError):
-    def __init__(self, message: str, field: Optional[str] = None) -> None:
+class BaseUtilsError(Exception):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(message)
-        self.field = field
+        self.message = message
+        self.details = details or {}
 
-class ConfigurationError(UtilsError):
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "error_type": self.__class__.__name__,
+            "message": self.message,
+            "details": self.details,
+        }
+
+
+class ValidationError(BaseUtilsError):
+    def __init__(self, message: str, field: Optional[str] = None, **kwargs: Any):
+        details = kwargs.get("details", {})
+        if field:
+            details["field"] = field
+        super().__init__(message, details=details)
+
+
+class ConfigurationError(BaseUtilsError):
     pass
 
-class ProcessingError(UtilsError):
+
+class ProcessingError(BaseUtilsError):
     pass
 
-def raise_if_not(condition: bool, exception_cls: Type[UtilsError], message: str) -> None:
-    if not condition:
-        raise exception_cls(message)
 
-def raise_if_none(value: Any, exception_cls: Type[UtilsError], message: str) -> None:
-    if value is None:
-        raise exception_cls(message)
+class ResourceNotFoundError(BaseUtilsError):
+    def __init__(self, resource_type: str, resource_id: Any):
+        message = f"{resource_type} '{resource_id}' was not found"
+        super().__init__(message, details={"type": resource_type, "id": resource_id})
 
-def get_exception_details(exc: Exception) -> Dict[str, Any]:
-    return {
-        "type": type(exc).__name__,
-        "message": str(exc),
-        "args": exc.args,
-        "traceback": traceback.format_exc()
-    }
 
-def safe_execute(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Optional[Any]:
-    try:
-        return func(*args, **kwargs)
-    except Exception:
-        return None
-
-def execute_with_default(func: Callable[..., Any], default: Any, *args: Any, **kwargs: Any) -> Any:
-    try:
-        return func(*args, **kwargs)
-    except Exception:
-        return default
-
-def format_error(exc: Exception) -> str:
-    return f"{exc.__class__.__name__}: {str(exc)}"
-
-def chain_exceptions(original: Exception, new_exception: Exception) -> None:
-    raise new_exception from original
+class TimeoutError(BaseUtilsError):
+    pass
