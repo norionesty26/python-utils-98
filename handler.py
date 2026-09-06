@@ -1,34 +1,28 @@
-import logging
-from typing import Any, Callable, Optional, Type
+import functools
+from typing import Callable, Any, Dict
 
-logger = logging.getLogger(__name__)
+CACHE: Dict[tuple, Any] = {}
 
-class ExecutionError(Exception):
-    pass
+def memoize(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in CACHE:
+            CACHE[key] = func(*args, **kwargs)
+        return CACHE[key]
+    return wrapper
 
-def safe_execute(
-    func: Callable, 
-    *args: Any, 
-    retries: int = 0, 
-    expected_errors: tuple[Type[Exception], ...] = (Exception,)
-) -> Optional[Any]:
-    attempt = 0
-    while attempt <= retries:
-        try:
-            return func(*args)
-        except expected_errors as e:
-            attempt += 1
-            if attempt > retries:
-                logger.error(f"Execution failed after {attempt} attempts: {e}")
-                raise ExecutionError(f"Permanent failure in {func.__name__}") from e
-            logger.warning(f"Retry {attempt}/{retries} for {func.__name__}")
-    return None
+class DataHandler:
+    def __init__(self, data: list):
+        self.data = data
 
-def validate_input(data: Any, schema: dict) -> bool:
-    try:
-        if not isinstance(data, dict):
-            return False
-        return all(key in data for key in schema.keys())
-    except (TypeError, AttributeError) as e:
-        logger.debug(f"Validation error: {e}")
-        return False
+    def batch_process(self, transform: Callable) -> list:
+        return [transform(item) for item in self.data]
+
+    @memoize
+    def compute_sum(self, factor: int) -> int:
+        return sum(x * factor for x in self.data)
+
+    def clear_cache(self) -> None:
+        global CACHE
+        CACHE.clear()
