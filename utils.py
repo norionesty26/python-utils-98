@@ -1,26 +1,39 @@
 import time
+from collections import OrderedDict
 from functools import wraps
-from typing import Callable, Any, Tuple, Type
+from itertools import islice
+from typing import Callable, Any, Generator, Iterable
 
+def ttl_cache(maxsize: int = 128, ttl: float = 60.0) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        cache: OrderedDict = OrderedDict()
 
-def retry(
-    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-    tries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-) -> Callable:
-    """Decorator to retry a function call with exponential backoff."""
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            attempt_delay = delay
-            for attempt in range(1, tries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == tries:
-                        raise e
-                    time.sleep(attempt_delay)
-                    attempt_delay *= backoff
+            key = (args, tuple(sorted(kwargs.items()))) if kwargs else args
+            now = time.monotonic()
+
+            if key in cache:
+                val, expiry = cache[key]
+                if now < expiry:
+                    cache.move_to_end(key)
+                    return val
+                del cache[key]
+
+            result = func(*args, **kwargs)
+            if len(cache) >= maxsize:
+                cache.popitem(last=False)
+            cache[key] = (result, now + ttl)
+            return result
+
+        wrapper.cache_clear = cache.clear  # type: ignore
         return wrapper
     return decorator
+
+def chunked(iterable: Iterable, size: int) -> Generator[list, None, None]:
+    it = iter(iterable)
+    while True:
+        chunk = list(islice(it, size))
+        if not chunk:
+            return
+        yield chunk
