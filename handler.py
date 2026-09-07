@@ -1,28 +1,37 @@
-import functools
-from typing import Callable, Any, Dict
+from typing import Any, Dict, Optional
 
-CACHE: Dict[tuple, Any] = {}
+def deep_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    """Retrieve nested dictionary values using dot notation."""
+    keys = path.split('.')
+    curr = data
+    try:
+        for key in keys:
+            curr = curr[key]
+        return curr
+    except (KeyError, TypeError, AttributeError):
+        return default
 
-def memoize(func: Callable) -> Callable:
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in CACHE:
-            CACHE[key] = func(*args, **kwargs)
-        return CACHE[key]
-    return wrapper
+def sanitize_dict(data: Dict[str, Any], keys: Optional[list] = None) -> Dict[str, Any]:
+    """Remove sensitive keys or filter dictionary contents."""
+    if keys is None:
+        keys = ['password', 'secret', 'token', 'key']
+    return {k: v for k, v in data.items() if k.lower() not in keys}
 
-class DataHandler:
-    def __init__(self, data: list):
-        self.data = data
+def flatten_dict(data: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten nested dictionary into single-level structure."""
+    items = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    def batch_process(self, transform: Callable) -> list:
-        return [transform(item) for item in self.data]
-
-    @memoize
-    def compute_sum(self, factor: int) -> int:
-        return sum(x * factor for x in self.data)
-
-    def clear_cache(self) -> None:
-        global CACHE
-        CACHE.clear()
+def format_data_size(value: int) -> str:
+    """Human readable string for byte sizes."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if value < 1024:
+            return f"{value:.2f} {unit}"
+        value /= 1024
+    return f"{value:.2f} PB"
