@@ -1,47 +1,41 @@
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 
 class ValidationError(Exception):
     pass
 
 
-def validate_record(record: Dict[str, Any]) -> bool:
-    if not isinstance(record, dict):
-        raise ValidationError("Record must be a dictionary")
-    if "id" not in record or not isinstance(record["id"], (int, str)):
-        raise ValidationError("Record must contain a valid 'id'")
-    if "data" not in record:
-        raise ValidationError("Record must contain a 'data' field")
-    return True
+class DataProcessor:
+    def __init__(self, validator: Optional[Callable[[Any], bool]] = None) -> None:
+        self.validator = validator or self._default_validator
+        self.processed_count = 0
+        self.errors: List[Dict[str, Any]] = []
 
+    def _default_validator(self, item: Any) -> bool:
+        if item is None:
+            return False
+        if isinstance(item, (int, float)) and item < 0:
+            return False
+        if isinstance(item, str) and not item.strip():
+            return False
+        return True
 
-def process_batch(batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    processed = []
-    for item in batch:
-        try:
-            validate_record(item)
-            result = {
-                "id": item["id"],
-                "status": "processed",
-                "payload": str(item["data"]).strip().upper(),
-            }
-            processed.append(result)
-        except ValidationError as err:
-            processed.append(
-                {"id": item.get("id"), "status": "failed", "error": str(err)}
-            )
-    return processed
+    def process_batch(self, items: List[Any]) -> List[Dict[str, Any]]:
+        results = []
+        for index, item in enumerate(items):
+            if not self.validator(item):
+                self.errors.append({
+                    "index": index,
+                    "item": item,
+                    "reason": "Invalid input payload",
+                })
+                continue
 
+            processed = self._process_single(item)
+            results.append(processed)
+            self.processed_count += 1
 
-def run_processor(payloads: List[Dict[str, Any]]) -> Dict[str, Any]:
-    if not isinstance(payloads, list):
-        raise TypeError("Input payloads must be a list")
+        return results
 
-    results = process_batch(payloads)
-    success_count = sum(1 for r in results if r["status"] == "processed")
-    return {
-        "total": len(payloads),
-        "successful": success_count,
-        "failed": len(payloads) - success_count,
-        "results": results,
-    }
+    def _process_single(self, item: Any) -> Dict[str, Any]:
+        return {"status": "success", "value": item}
