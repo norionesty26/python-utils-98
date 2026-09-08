@@ -1,46 +1,37 @@
+import json
 import logging
-import os
 import sys
-from typing import Optional
+from typing import Any, Dict
 
 
-class SafeLogger:
-    def __init__(
-        self, name: str, log_file: Optional[str] = None, level: int = logging.INFO
-    ):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        self.logger.handlers.clear()
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_data: Dict[str, Any] = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+        }
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+        if hasattr(record, "extra_data"):
+            log_data["extra"] = record.extra_data
+        return json.dumps(log_data)
 
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
 
-        stream_handler = logging.StreamHandler(sys.stderr)
-        stream_handler.setFormatter(formatter)
-        self.logger.addHandler(stream_handler)
+def get_structured_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.propagate = False
 
-        if log_file:
-            try:
-                log_dir = os.path.dirname(os.path.abspath(log_file))
-                if log_dir:
-                    os.makedirs(log_dir, exist_ok=True)
-                file_handler = logging.FileHandler(log_file, encoding="utf-8")
-                file_handler.setFormatter(formatter)
-                self.logger.addHandler(file_handler)
-            except (OSError, PermissionError) as err:
-                self.logger.warning(
-                    f"Failed to initialize file logger at {log_file} ({err}). Falling back to stderr."
-                )
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = JSONFormatter()
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    def info(self, msg: str, *args, **kwargs):
-        self.logger.info(msg, *args, **kwargs)
+    return logger
 
-    def warning(self, msg: str, *args, **kwargs):
-        self.logger.warning(msg, *args, **kwargs)
 
-    def error(self, msg: str, *args, **kwargs):
-        self.logger.error(msg, *args, **kwargs)
-
-    def debug(self, msg: str, *args, **kwargs):
-        self.logger.debug(msg, *args, **kwargs)
+def log_with_extra(logger: logging.Logger, level: int, msg: str, extra: Dict[str, Any]) -> None:
+    logger.log(level, msg, extra={"extra_data": extra})
