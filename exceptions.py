@@ -1,29 +1,32 @@
-class UtilityError(Exception):
-    """Base exception for python-utils-98."""
+from typing import Any, Optional
 
-class ConfigurationError(UtilityError):
-    """Raised when configuration validation fails."""
 
-class ProcessingError(UtilityError):
-    """Raised during data transformation failures."""
+class UtilsError(Exception):
+    """Base exception class for all library errors."""
 
-class ValidationError(UtilityError):
-    """Raised when input validation fails."""
+    def __init__(self, message: str, details: Optional[Any] = None) -> None:
+        super().__init__(message)
+        self.message = message
+        self.details = details
 
-def handle_exceptions(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (ValueError, TypeError, KeyError) as e:
-            raise UtilityError(f"Operation failed: {e}") from e
-    return wrapper
 
-def validate_input(data, schema):
-    if data is None:
-        raise ValidationError("Input data cannot be None")
-    if not isinstance(data, dict):
-        raise ValidationError("Input data must be a dictionary")
-    for key in schema:
-        if key not in data:
-            raise ValidationError(f"Missing required key: {key}")
-    return True
+class ValidationError(UtilsError):
+    """Raised when validation on input data fails."""
+
+
+class ConfigurationError(UtilsError):
+    """Raised when application configuration is invalid or missing."""
+
+
+class ResourceNotFoundError(UtilsError):
+    """Raised when a requested resource cannot be found."""
+
+
+class ProcessExecutionError(UtilsError):
+    """Raised when an external or internal process execution fails."""
+
+    def __init__(
+        self, message: str, return_code: Optional[int] = None, details: Optional[Any] = None
+    ) -> None:
+        super().__init__(message, details)
+        self.return_code = return_code
