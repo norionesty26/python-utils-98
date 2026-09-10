@@ -1,28 +1,39 @@
-from typing import Any, Dict, List, Optional
+import math
+from datetime import datetime, timezone
+from typing import Any, Generator, Iterable, TypeVar
 
-def flatten_dict(data: Dict[str, Any], sep: str = '_') -> Dict[str, Any]:
-    items = {}
-    for key, value in data.items():
-        if isinstance(value, dict):
-            for subkey, subvalue in flatten_dict(value, sep).items():
-                items[f'{key}{sep}{subkey}'] = subvalue
-        else:
-            items[key] = value
-    return items
+T = TypeVar("T")
 
-def get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    keys = path.split('.')
-    for key in keys:
-        if isinstance(data, dict):
-            data = data.get(key)
-        else:
+
+def chunk_iterable(iterable: Iterable[T], chunk_size: int) -> Generator[list[T], None, None]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than zero")
+    chunk: list[T] = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+
+def deep_get(data: dict[str, Any], keys: str, default: Any = None) -> Any:
+    current = data
+    for key in keys.split("."):
+        if not isinstance(current, dict) or key not in current:
             return default
-    return data if data is not None else default
+        current = current[key]
+    return current
 
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
-    if size <= 0:
-        raise ValueError('Chunk size must be positive')
-    return [data[i:i + size] for i in range(0, len(data), size)]
 
-def sanitize_keys(data: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
-    return {mapping.get(k, k): v for k, v in data.items()}
+def truncate_text(text: str, max_length: int, suffix: str = "...") -> str:
+    if max_length <= len(suffix):
+        raise ValueError(f"max_length must be greater than suffix length ({len(suffix)})")
+    if len(text) <= max_length:
+        return text
+    return text[: max_length - len(suffix)] + suffix
+
+
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
