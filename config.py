@@ -1,25 +1,32 @@
-import json
 import os
+import json
 from typing import Any, Dict, Optional
 
-class ConfigLoader:
-    def __init__(self, defaults: Optional[Dict[str, Any]] = None):
-        self._config = defaults or {}
+class ConfigError(Exception):
+    pass
 
-    def load_from_json(self, filepath: str) -> None:
-        if os.path.exists(filepath):
-            with open(filepath, 'r') as f:
-                self._config.update(json.load(f))
+def load_config(path: str) -> Dict[str, Any]:
+    if not os.path.exists(path):
+        raise ConfigError(f"config file not found: {path}")
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self._config.get(key, default)
+    if not os.access(path, os.R_OK):
+        raise ConfigError(f"insufficient permissions for: {path}")
 
-    @property
-    def all(self) -> Dict[str, Any]:
-        return self._config.copy()
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+        if not isinstance(data, dict):
+            raise ConfigError("invalid config format: expected json object")
+            
+        return data
+    except json.JSONDecodeError as e:
+        raise ConfigError(f"malformed json: {e.msg}") from e
+    except Exception as e:
+        raise ConfigError(f"unexpected error reading config: {str(e)}") from e
 
-    def update(self, overrides: Dict[str, Any]) -> None:
-        self._config.update(overrides)
-
-def create_config(defaults: Optional[Dict[str, Any]] = None) -> ConfigLoader:
-    return ConfigLoader(defaults)
+def get_setting(config: Dict[str, Any], key: str, default: Optional[Any] = None) -> Any:
+    try:
+        return config.get(key, default)
+    except AttributeError:
+        return default
