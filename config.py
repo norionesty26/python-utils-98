@@ -1,32 +1,45 @@
 import os
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-class ConfigError(Exception):
-    pass
+DEFAULT_CONFIG: Dict[str, Any] = {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "debug": False,
+    "timeout": 30
+}
 
-def load_config(path: str) -> Dict[str, Any]:
-    if not os.path.exists(path):
-        raise ConfigError(f"config file not found: {path}")
+class ConfigLoader:
+    def __init__(self, filepath: str = None):
+        self.config = DEFAULT_CONFIG.copy()
+        if filepath and os.path.exists(filepath):
+            self.load_from_file(filepath)
+        self.load_from_env()
 
-    if not os.access(path, os.R_OK):
-        raise ConfigError(f"insufficient permissions for: {path}")
+    def load_from_file(self, filepath: str) -> None:
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    self.config.update(data)
+        except (json.JSONDecodeError, OSError):
+            pass
 
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            
-        if not isinstance(data, dict):
-            raise ConfigError("invalid config format: expected json object")
-            
-        return data
-    except json.JSONDecodeError as e:
-        raise ConfigError(f"malformed json: {e.msg}") from e
-    except Exception as e:
-        raise ConfigError(f"unexpected error reading config: {str(e)}") from e
+    def load_from_env(self) -> None:
+        for key in self.config:
+            env_key = f"APP_{key.upper()}"
+            if env_key in os.environ:
+                val = os.environ[env_key]
+                default_val = self.config[key]
+                if isinstance(default_val, bool):
+                    self.config[key] = val.lower() in ("true", "1", "yes")
+                elif isinstance(default_val, int):
+                    try:
+                        self.config[key] = int(val)
+                    except ValueError:
+                        pass
+                else:
+                    self.config[key] = val
 
-def get_setting(config: Dict[str, Any], key: str, default: Optional[Any] = None) -> Any:
-    try:
-        return config.get(key, default)
-    except AttributeError:
-        return default
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.config.get(key, default)
