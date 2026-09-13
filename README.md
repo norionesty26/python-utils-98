@@ -1,39 +1,50 @@
 # python-utils-98
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-python-utils-98 is a lightweight collection of general-purpose Python utilities for everyday development tasks. It provides reliable, dependency-free helpers that reduce boilerplate in file handling, data processing, and performance monitoring.
+A robust collection of high-performance Python utilities designed to streamline common data processing and system automation tasks. This library focuses on efficiency, type safety, and minimal dependencies for seamless integration into any production environment.
 
 ## Features
 
-- Safe file operations with automatic directory creation and encoding detection
-- Date and time utilities for parsing, formatting, and relative calculations
-- Configuration loader that merges JSON, YAML, and environment variables
-- Decorators for retry logic with exponential backoff and execution timing
+*   **Robust File I/O:** Simplified wrappers for handling recursive directory traversal, thread-safe logging, and automated cleanup of temporary storage.
+*   **Data Validation:** A lightweight set of decorators for enforcing schema constraints and data type integrity across complex JSON payloads.
+*   **Concurrent Execution:** Easy-to-implement task queuing and parallel execution primitives built on `concurrent.futures`.
+*   **Cross-Platform Pathing:** Unified path manipulation utilities that handle OS-specific path separators without extra configuration.
 
 ## Installation
+
+Install the package via `pip` from PyPI:
 
 ```bash
 pip install python-utils-98
 ```
 
-## Usage
+Alternatively, install from source for the latest development features:
+
+```bash
+git clone https://github.com/Developer/python-utils-98.git
+cd python-utils-98
+pip install .
+```
+
+## Basic Usage
+
+The library is designed with a clean API, allowing you to import specific utilities as needed:
 
 ```python
-from python_utils_98 import read_file, load_config, Timer
+from pyutils98.file_ops import SafeFileWriter
+from pyutils98.validators import validate_schema
 
-# Read file with automatic directory handling
-content = read_file("data/input.txt")
+# Initialize a protected file writer
+writer = SafeFileWriter('output.log')
+writer.append("Process initialized successfully.")
 
-# Load merged configuration
-config = load_config("config.json", env_prefix="APP_")
-
-# Measure execution time
-with Timer() as t:
-    result = process_data()
-print(f"Done in {t.elapsed:.2f}s")
+# Validate incoming data structures
+data = {"id": 1, "status": "active"}
+if validate_schema(data, {"id": int, "status": str}):
+    print("Payload integrity verified.")
 ```
 
 ## License
 
-Released under the MIT License.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Distributed under the MIT License. See `LICENSE` for more information.
