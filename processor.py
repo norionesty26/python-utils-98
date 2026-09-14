@@ -1,20 +1,33 @@
-import sys
+import logging
+from typing import Any, Optional
 
-def validate_input(data):
-    if not isinstance(data, dict):
-        raise ValueError("input must be a dictionary")
-    if "key" not in data or not isinstance(data["key"], str):
-        raise ValueError("missing or invalid key in data")
-    return True
+logger = logging.getLogger(__name__)
 
-def process_stream(data_stream):
-    for item in data_stream:
-        try:
-            if validate_input(item):
-                print(f"Processing: {item['key']}")
-        except (ValueError, TypeError) as e:
-            print(f"Skipping invalid entry: {e}", file=sys.stderr)
+class ProcessingError(Exception):
+    pass
+
+def safe_process(data: Any) -> Optional[Any]:
+    try:
+        if data is None:
+            raise ValueError("input data cannot be null")
+        
+        if not isinstance(data, (dict, list)):
+            raise TypeError(f"unsupported data type: {type(data).__name__}")
+
+        return _internal_transform(data)
+
+    except (ValueError, TypeError) as e:
+        logger.error(f"validation error: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"unexpected processing failure: {e}")
+        raise ProcessingError("critical failure during transformation") from e
+
+def _internal_transform(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {str(k): v for k, v in data.items()}
+    return [item for item in data if item is not None]
 
 if __name__ == "__main__":
-    sample_data = [{"key": "val1"}, {"wrong": "data"}, {"key": "val2"}]
-    process_stream(sample_data)
+    logging.basicConfig(level=logging.INFO)
+    print(safe_process({"key": "value"}))
