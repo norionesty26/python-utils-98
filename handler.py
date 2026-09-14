@@ -1,37 +1,26 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Callable
 
-def deep_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    """Retrieve nested dictionary values using dot notation."""
-    keys = path.split('.')
-    curr = data
-    try:
-        for key in keys:
-            curr = curr[key]
-        return curr
-    except (KeyError, TypeError, AttributeError):
-        return default
+class DataHandler:
+    """Base handler for processing structured data streams."""
 
-def sanitize_dict(data: Dict[str, Any], keys: Optional[list] = None) -> Dict[str, Any]:
-    """Remove sensitive keys or filter dictionary contents."""
-    if keys is None:
-        keys = ['password', 'secret', 'token', 'key']
-    return {k: v for k, v in data.items() if k.lower() not in keys}
+    def __init__(self, callback: Optional[Callable[[Dict[str, Any]], None]] = None) -> None:
+        self.callback = callback
+        self.data: Dict[str, Any] = {}
 
-def flatten_dict(data: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flatten nested dictionary into single-level structure."""
-    items = []
-    for k, v in data.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+    def update(self, key: str, value: Any) -> None:
+        """Update internal state and trigger optional callback."""
+        self.data[key] = value
+        if self.callback:
+            self.callback(self.data)
 
-def format_data_size(value: int) -> str:
-    """Human readable string for byte sizes."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if value < 1024:
-            return f"{value:.2f} {unit}"
-        value /= 1024
-    return f"{value:.2f} PB"
+    def get(self, key: str, default: Optional[Any] = None) -> Any:
+        """Retrieve value by key with optional default fallback."""
+        return self.data.get(key, default)
+
+    def clear(self) -> None:
+        """Reset internal storage to empty state."""
+        self.data.clear()
+
+def process_payload(data: Dict[str, Any], validator: Callable[[Any], bool]) -> Dict[str, Any]:
+    """Filter dictionary contents based on a provided validation function."""
+    return {k: v for k, v in data.items() if validator(v)}
