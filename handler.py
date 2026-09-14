@@ -1,26 +1,36 @@
-from typing import Any, Dict, Optional, Callable
+import logging
+from typing import Any, Callable, Optional
 
-class DataHandler:
-    """Base handler for processing structured data streams."""
+logger = logging.getLogger(__name__)
 
-    def __init__(self, callback: Optional[Callable[[Dict[str, Any]], None]] = None) -> None:
-        self.callback = callback
-        self.data: Dict[str, Any] = {}
+class ProcessingError(Exception):
+    """Custom exception for handler operations."""
 
-    def update(self, key: str, value: Any) -> None:
-        """Update internal state and trigger optional callback."""
-        self.data[key] = value
-        if self.callback:
-            self.callback(self.data)
+def safe_execute(func: Callable, *args: Any, **kwargs: Any) -> Optional[Any]:
+    """Executes a callable with comprehensive error handling."""
+    if not callable(func):
+        logger.error("Provided argument is not a callable object")
+        return None
 
-    def get(self, key: str, default: Optional[Any] = None) -> Any:
-        """Retrieve value by key with optional default fallback."""
-        return self.data.get(key, default)
+    try:
+        return func(*args, **kwargs)
+    except (ValueError, TypeError, KeyError) as e:
+        logger.warning(f"Handled input-related exception: {e}")
+    except PermissionError:
+        logger.critical("Insufficient permissions to perform operation")
+    except Exception as e:
+        logger.exception(f"Unexpected error occurred: {type(e).__name__}")
+        raise ProcessingError(f"Critical failure in {func.__name__}") from e
+    
+    return None
 
-    def clear(self) -> None:
-        """Reset internal storage to empty state."""
-        self.data.clear()
-
-def process_payload(data: Dict[str, Any], validator: Callable[[Any], bool]) -> Dict[str, Any]:
-    """Filter dictionary contents based on a provided validation function."""
-    return {k: v for k, v in data.items() if validator(v)}
+def validate_data(data: Any) -> bool:
+    """Validates input data against edge cases."""
+    try:
+        if data is None:
+            return False
+        if isinstance(data, (list, dict, str)) and not data:
+            return False
+        return True
+    except Exception:
+        return False
