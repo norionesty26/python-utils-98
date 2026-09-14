@@ -1,33 +1,29 @@
-import logging
-from typing import Any, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
 
-class ProcessingError(Exception):
-    pass
+def batch_process(data: List[Any], func: Callable[[Any], Any], chunk_size: int = 10) -> List[Any]:
+    """Split data into chunks and process."""
+    if not data or chunk_size <= 0:
+        return []
+    return [func(item) for chunk in [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)] for item in chunk]
 
-def safe_process(data: Any) -> Optional[Any]:
-    try:
-        if data is None:
-            raise ValueError("input data cannot be null")
-        
-        if not isinstance(data, (dict, list)):
-            raise TypeError(f"unsupported data type: {type(data).__name__}")
 
-        return _internal_transform(data)
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
+    """Flatten nested dictionary keys."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    except (ValueError, TypeError) as e:
-        logger.error(f"validation error: {e}")
-        return None
-    except Exception as e:
-        logger.exception(f"unexpected processing failure: {e}")
-        raise ProcessingError("critical failure during transformation") from e
 
-def _internal_transform(data: Any) -> Any:
+def clean_data(data: Any, target_type: type = str) -> Any:
+    """Filter and cast data values."""
+    if isinstance(data, list):
+        return [clean_data(i, target_type) for i in data if i is not None]
     if isinstance(data, dict):
-        return {str(k): v for k, v in data.items()}
-    return [item for item in data if item is not None]
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    print(safe_process({"key": "value"}))
+        return {k: clean_data(v, target_type) for k, v in data.items() if v is not None}
+    return target_type(data) if data is not None else None
