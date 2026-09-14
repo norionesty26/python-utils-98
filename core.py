@@ -1,26 +1,26 @@
-import sys
+import logging
+from typing import Any, List
 
-def validate_input(data):
-    if not isinstance(data, (int, float)):
-        raise ValueError(f'Invalid input type: {type(data).__name__}')
-    if not (0 <= data <= 100):
-        raise ValueError('Input out of allowed range 0-100')
-    return True
+logging.basicConfig(level=logging.INFO)
 
-def process_value(val):
-    return val * 2
+def process_items(data: List[Any]) -> None:
+    if not isinstance(data, list):
+        raise ValueError('input must be a list')
 
-def run_loop():
-    inputs = [10, 50, 105, 'error', 25]
-    results = []
-    for item in inputs:
-        try:
-            validate_input(item)
-            results.append(process_value(item))
-        except (ValueError, TypeError) as e:
-            print(f'Skipping invalid input {item}: {e}', file=sys.stderr)
-    return results
+    for item in data:
+        if not isinstance(item, (int, float)):
+            logging.warning(f'skipping invalid item: {item}')
+            continue
+
+        result = item * 2
+        logging.info(f'processed {item} to {result}')
+
+def main():
+    sample_data = [1, 'invalid', 3.5, None, 10]
+    try:
+        process_items(sample_data)
+    except ValueError as e:
+        logging.error(f'processing failed: {e}')
 
 if __name__ == '__main__':
-    data_output = run_loop()
-    print(f'Processed: {data_output}')
+    main()
