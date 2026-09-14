@@ -1,35 +1,30 @@
-import collections
-from typing import Any, Iterable, Dict, List, Optional
+import functools
+import random
+import time
+from typing import Callable, Type, Tuple, Any
 
-def flatten(items: Iterable[Any], depth: int = 1) -> List[Any]:
-    result = []
-    for item in items:
-        if depth > 0 and isinstance(item, (list, tuple)):
-            result.extend(flatten(item, depth - 1))
-        else:
-            result.append(item)
-    return result
 
-def chunker(items: Iterable[Any], size: int) -> Iterable[List[Any]]:
-    items = list(items)
-    for i in range(0, len(items), size):
-        yield items[i : i + size]
-
-def dict_get_path(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    keys = path.split('.')
-    current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return default
-
-def unique_preserve_order(items: Iterable[Any]) -> List[Any]:
-    seen = set()
-    result = []
-    for item in items:
-        if item not in seen:
-            seen.add(item)
-            result.append(item)
-    return result
+def retry(
+    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
+    tries: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    jitter: bool = True
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, tries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == tries:
+                        raise e
+                    sleep_time = current_delay
+                    if jitter:
+                        sleep_time += random.uniform(0, current_delay * 0.1)
+                    time.sleep(sleep_time)
+                    current_delay *= backoff
+        return wrapper
+    return decorator
