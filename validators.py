@@ -1,76 +1,28 @@
 import re
-from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
-def is_valid_email(email: str) -> bool:
-    if not isinstance(email, str) or not email:
-        return False
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email))
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
 
-def is_valid_url(url: str) -> bool:
-    if not isinstance(url, str) or not url:
-        return False
-    pattern = r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$'
-    return bool(re.match(pattern, url))
+class ValidationError(Exception):
+    pass
 
-def is_valid_phone(phone: str) -> bool:
-    if not isinstance(phone, str) or not phone:
-        return False
-    cleaned = re.sub(r'[\s\-\(\)]', '', phone)
-    pattern = r'^\+?\d{7,15}$'
-    return bool(re.match(pattern, cleaned))
-
-def is_valid_ipv4(ip: str) -> bool:
-    if not isinstance(ip, str) or not ip:
-        return False
-    parts = ip.split('.')
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if not part.isdigit() or not 0 <= int(part) <= 255:
-            return False
+def validate_email(email: str) -> bool:
+    if not isinstance(email, str) or not EMAIL_REGEX.match(email):
+        raise ValidationError(f"invalid email format: {email}")
     return True
 
-def is_valid_credit_card(number: str) -> bool:
-    if not isinstance(number, str):
-        return False
-    digits = re.sub(r'\D', '', number)
-    if len(digits) < 13 or len(digits) > 19:
-        return False
-    total = 0
-    reverse_digits = digits[::-1]
-    for i, d in enumerate(reverse_digits):
-        n = int(d)
-        if i % 2 == 1:
-            n *= 2
-            if n > 9:
-                n -= 9
-        total += n
-    return total % 10 == 0
+def validate_not_empty(value: Any, field_name: str = "field") -> Any:
+    if value is None or (isinstance(value, (str, list, dict)) and not value):
+        raise ValidationError(f"{field_name} cannot be empty")
+    return value
 
-def is_valid_date(date_str: str, fmt: str = '%Y-%m-%d') -> bool:
-    if not isinstance(date_str, str):
-        return False
-    try:
-        datetime.strptime(date_str, fmt)
-        return True
-    except ValueError:
-        return False
+def validate_range(value: int, min_val: int, max_val: int) -> int:
+    if not (min_val <= value <= max_val):
+        raise ValidationError(f"value {value} out of range [{min_val}, {max_val}]")
+    return value
 
-def is_positive_number(value: Any) -> bool:
-    try:
-        num = float(value)
-        return num > 0
-    except (ValueError, TypeError):
-        return False
+def safe_get(data: dict, key: str, default: Any = None) -> Any:
+    return data.get(key, default)
 
-def is_non_empty(value: Any) -> bool:
-    if isinstance(value, str):
-        return len(value.strip()) > 0
-    return value is not None and value != []
-
-def is_alphanumeric(value: str) -> bool:
-    if not isinstance(value, str):
-        return False
-    return bool(re.match(r'^[a-zA-Z0-9]+$', value))
+def sanitize_input(value: str) -> str:
+    return str(value).strip()
