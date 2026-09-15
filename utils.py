@@ -13,21 +13,28 @@ def memoize(func: Callable) -> Callable:
         return CACHE[key]
     return wrapper
 
-def batch_process(items: list, chunk_size: int = 100):
-    for i in range(0, len(items), chunk_size):
-        yield items[i:i + chunk_size]
+class BatchProcessor:
+    def __init__(self, size: int = 100):
+        self.size = size
+        self.buffer = []
 
-class PerformanceTimer:
-    def __init__(self, name: str = "task"):
-        self.name = name
+    def process(self, item: Any, callback: Callable) -> None:
+        self.buffer.append(item)
+        if len(self.buffer) >= self.size:
+            callback(self.buffer)
+            self.buffer.clear()
 
-    def __enter__(self):
-        self.start = time.perf_counter()
-        return self
+def timer(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        return result, end - start
+    return wrapper
 
-    def __exit__(self, *args):
-        self.elapsed = time.perf_counter() - self.start
-        print(f"{self.name} took {self.elapsed:.4f}s")
+def fast_flatten(nested: list) -> list:
+    return [item for sublist in nested for item in sublist]
 
-def fast_flatten(nested_list: list) -> list:
-    return [item for sublist in nested_list for item in sublist]
+def clear_cache() -> None:
+    CACHE.clear()
