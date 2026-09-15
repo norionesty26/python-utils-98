@@ -1,29 +1,26 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import List, Optional, Any, Callable
 
+class DataProcessor:
+    """Utility class for systematic data transformation."""
 
-def batch_process(data: List[Any], func: Callable[[Any], Any], chunk_size: int = 10) -> List[Any]:
-    """Split data into chunks and process."""
-    if not data or chunk_size <= 0:
-        return []
-    return [func(item) for chunk in [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)] for item in chunk]
+    def __init__(self, transform_func: Optional[Callable[[Any], Any]] = None) -> None:
+        self.transform_func = transform_func
 
+    def process_batch(self, items: List[Any]) -> List[Any]:
+        """Apply transformation function to a list of items."""
+        if not self.transform_func:
+            return items
+        return [self.transform_func(item) for item in items]
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '.') -> Dict[str, Any]:
-    """Flatten nested dictionary keys."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+    @staticmethod
+    def flatten(nested_list: List[List[Any]]) -> List[Any]:
+        """Flatten a list of lists into a single list."""
+        return [item for sublist in nested_list for item in sublist]
 
+    def filter_none(self, items: List[Optional[Any]]) -> List[Any]:
+        """Remove all None values from a list."""
+        return [item for item in items if item is not None]
 
-def clean_data(data: Any, target_type: type = str) -> Any:
-    """Filter and cast data values."""
-    if isinstance(data, list):
-        return [clean_data(i, target_type) for i in data if i is not None]
-    if isinstance(data, dict):
-        return {k: clean_data(v, target_type) for k, v in data.items() if v is not None}
-    return target_type(data) if data is not None else None
+def create_processor(func: Optional[Callable[[Any], Any]] = None) -> DataProcessor:
+    """Factory function for DataProcessor instances."""
+    return DataProcessor(transform_func=func)
