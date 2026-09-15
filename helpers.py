@@ -1,30 +1,28 @@
-import functools
-import random
-import time
-from typing import Callable, Type, Tuple, Any
+from typing import Any, Iterable, Optional
 
+def flatten(items: Iterable[Any]) -> list[Any]:
+    """Flatten a nested list structure into a single list."""
+    result = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
 
-def retry(
-    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-    tries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-    jitter: bool = True
-) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for attempt in range(1, tries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    if attempt == tries:
-                        raise e
-                    sleep_time = current_delay
-                    if jitter:
-                        sleep_time += random.uniform(0, current_delay * 0.1)
-                    time.sleep(sleep_time)
-                    current_delay *= backoff
-        return wrapper
-    return decorator
+def get_nested(data: dict[str, Any], path: str, default: Optional[Any] = None) -> Any:
+    """Retrieve a value from a nested dictionary using a dot-notation string."""
+    keys = path.split('.')
+    curr = data
+    try:
+        for key in keys:
+            curr = curr[key]
+        return curr
+    except (KeyError, TypeError):
+        return default
+
+def chunker(items: Iterable[Any], size: int) -> Iterable[list[Any]]:
+    """Split an iterable into chunks of the specified size."""
+    items = list(items)
+    for i in range(0, len(items), size):
+        yield items[i : i + size]
