@@ -1,26 +1,33 @@
-import os
-from typing import Final
+from typing import Final, Any, Dict, List, Union
 
-# Environment configuration constants
-ENV_PREFIX: Final[str] = "PY_UTILS_"
-DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 3
+# Data handling constants
+DEFAULT_ENCODING: Final[str] = "utf-8"
+MAX_RETRY_ATTEMPTS: Final[int] = 3
+TIMEOUT_SECONDS: Final[float] = 30.0
 
-# Path constants
-BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR: Final[str] = os.path.join(BASE_DIR, "logs")
-TEMP_DIR: Final[str] = os.path.join(BASE_DIR, "temp")
+# Type alias definitions for common data structures
+DataPayload = Dict[str, Any]
+DataList = List[DataPayload]
+Primitive = Union[str, int, float, bool, None]
 
-# Resource limits
-CHUNK_SIZE: Final[int] = 8192
-BUFFER_SIZE: Final[int] = 1024 * 1024
+HTTP_SUCCESS_CODES: Final[set[int]] = {200, 201, 204}
 
-# Validation patterns
-EMAIL_REGEX: Final[str] = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-UUID_REGEX: Final[str] = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+RESERVED_KEYS: Final[List[str]] = [
+    "id",
+    "metadata",
+    "timestamp",
+    "created_at",
+    "updated_at"
+]
 
-# Supported formats
-SUPPORTED_EXTENSIONS: Final[set[str]] = {".json", ".yaml", ".csv", ".txt"}
+# Validation constraints
+MIN_BATCH_SIZE: Final[int] = 1
+MAX_BATCH_SIZE: Final[int] = 1000
 
-def get_timeout() -> int:
-    return int(os.getenv(f"{ENV_PREFIX}TIMEOUT", DEFAULT_TIMEOUT))
+def get_default_config() -> DataPayload:
+    return {
+        "encoding": DEFAULT_ENCODING,
+        "retries": MAX_RETRY_ATTEMPTS,
+        "timeout": TIMEOUT_SECONDS,
+        "reserved": RESERVED_KEYS
+    }
