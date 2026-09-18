@@ -1,30 +1,28 @@
-import os
-from typing import Any, Iterable, Optional
+import json
+from typing import Any, Dict, Optional, Union
 
-def ensure_dir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+def normalize_data(data: Any) -> Any:
+    if isinstance(data, dict):
+        return {str(k): normalize_data(v) for k, v in data.items()}
+    if isinstance(data, (list, tuple, set)):
+        return [normalize_data(i) for i in data]
+    return data
 
-def flatten(items: Iterable[Any]) -> list[Any]:
-    result = []
-    for item in items:
-        if isinstance(item, (list, tuple)):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
+def safe_json_load(content: str, default: Optional[Dict] = None) -> Any:
+    try:
+        return json.loads(content)
+    except (json.JSONDecodeError, TypeError):
+        return default if default is not None else {}
 
-def get_env_var(key: str, default: Optional[str] = None) -> str:
-    return os.getenv(key, default) or ''
-
-def chunk_list(data: list[Any], size: int) -> Iterable[list[Any]]:
+def chunk_list(data: list, size: int):
     for i in range(0, len(data), size):
         yield data[i:i + size]
 
-def singleton(cls):
-    instances = {}
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-    return get_instance
+def extract_nested(data: Dict, keys: list, default: Any = None) -> Any:
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
