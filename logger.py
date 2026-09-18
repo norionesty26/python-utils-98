@@ -1,36 +1,26 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import sys
+from typing import Optional
 
-def setup_logger(
-    name: str,
-    log_file: str = "app.log",
-    max_bytes: int = 10485760,
-    backup_count: int = 5,
-    level: int = logging.INFO
-) -> logging.Logger:
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    logger.propagate = False
-
-    if logger.hasHandlers():
-        logger.handlers.clear()
-
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    file_handler = RotatingFileHandler(
-        log_file,
-        maxBytes=max_bytes,
-        backupCount=backup_count,
-        encoding="utf-8"
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
+    
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
     return logger
+
+def log_exception(logger: logging.Logger, e: Exception, msg: Optional[str] = None) -> None:
+    context = f"{msg}: " if msg else ""
+    logger.error(f"{context}{type(e).__name__}: {str(e)}", exc_info=True)
+
+class LoggerMixin:
+    @property
+    def logger(self) -> logging.Logger:
+        return get_logger(self.__class__.__name__)
