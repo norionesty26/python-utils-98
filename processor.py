@@ -1,26 +1,45 @@
-from typing import List, Optional, Any, Callable
+from typing import Any, Callable, Dict, List, Optional
 
-class DataProcessor:
-    """Utility class for systematic data transformation."""
 
-    def __init__(self, transform_func: Optional[Callable[[Any], Any]] = None) -> None:
-        self.transform_func = transform_func
+class ProcessingError(Exception):
+    pass
 
-    def process_batch(self, items: List[Any]) -> List[Any]:
-        """Apply transformation function to a list of items."""
-        if not self.transform_func:
-            return items
-        return [self.transform_func(item) for item in items]
 
-    @staticmethod
-    def flatten(nested_list: List[List[Any]]) -> List[Any]:
-        """Flatten a list of lists into a single list."""
-        return [item for sublist in nested_list for item in sublist]
+class BatchProcessor:
+    def __init__(self, fail_fast: bool = False) -> None:
+        self.fail_fast = fail_fast
+        self.errors: List[Dict[str, Any]] = []
 
-    def filter_none(self, items: List[Optional[Any]]) -> List[Any]:
-        """Remove all None values from a list."""
-        return [item for item in items if item is not None]
+    def process_item(
+        self, item: Any, transform: Callable[[Any], Any]
+    ) -> Optional[Any]:
+        if item is None:
+            return None
+        try:
+            return transform(item)
+        except (ValueError, TypeError, ZeroDivisionError, KeyError) as err:
+            error_info = {
+                "item": item,
+                "error": str(err),
+                "type": type(err).__name__,
+            }
+            self.errors.append(error_info)
+            if self.fail_fast:
+                raise ProcessingError(f"Failed processing item: {err}") from err
+            return None
 
-def create_processor(func: Optional[Callable[[Any], Any]] = None) -> DataProcessor:
-    """Factory function for DataProcessor instances."""
-    return DataProcessor(transform_func=func)
+    def process_batch(
+        self, items: List[Any], transform: Callable[[Any], Any]
+    ) -> List[Any]:
+        if not isinstance(items, list):
+            raise TypeError(f"Expected list, got {type(items).__name__}")
+
+        results = []
+        for item in items:
+            res = self.process_item(item, transform)
+            if res is not None:
+                results.append(res)
+        return results
+
+    def clear_errors(self) -> None:
+        self.errors.clear()
