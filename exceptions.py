@@ -1,32 +1,31 @@
-from typing import Any, Optional
+class BaseUtilsError(Exception):
+    """Base exception for python-utils-98."""
 
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration is invalid."""
 
-class UtilsError(Exception):
-    """Base exception class for all library errors."""
+class ValidationError(BaseUtilsError):
+    """Raised when data validation fails."""
 
-    def __init__(self, message: str, details: Optional[Any] = None) -> None:
-        super().__init__(message)
-        self.message = message
-        self.details = details
+class ExecutionError(BaseUtilsError):
+    """Raised when a process execution fails."""
 
+def handle_error(e: Exception, logger=None) -> None:
+    """Centralized exception processing."""
+    if logger:
+        logger.error(f"{e.__class__.__name__}: {str(e)}")
+    raise e
 
-class ValidationError(UtilsError):
-    """Raised when validation on input data fails."""
+class ExceptionContext:
+    """Context manager for error suppression."""
+    def __init__(self, exception_type=Exception, suppress=False):
+        self.exception_type = exception_type
+        self.suppress = suppress
 
+    def __enter__(self):
+        return self
 
-class ConfigurationError(UtilsError):
-    """Raised when application configuration is invalid or missing."""
-
-
-class ResourceNotFoundError(UtilsError):
-    """Raised when a requested resource cannot be found."""
-
-
-class ProcessExecutionError(UtilsError):
-    """Raised when an external or internal process execution fails."""
-
-    def __init__(
-        self, message: str, return_code: Optional[int] = None, details: Optional[Any] = None
-    ) -> None:
-        super().__init__(message, details)
-        self.return_code = return_code
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type and issubclass(exc_type, self.exception_type):
+            return self.suppress
+        return False
