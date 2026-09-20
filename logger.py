@@ -16,11 +16,22 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
         
     return logger
 
-def log_exception(logger: logging.Logger, e: Exception, msg: Optional[str] = None) -> None:
-    context = f"{msg}: " if msg else ""
-    logger.error(f"{context}{type(e).__name__}: {str(e)}", exc_info=True)
+def log_execution_time(func):
+    import time
+    from functools import wraps
+    
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        logging.info(f"{func.__name__} executed in {end - start:.4f}s")
+        return result
+    return wrapper
 
-class LoggerMixin:
-    @property
-    def logger(self) -> logging.Logger:
-        return get_logger(self.__class__.__name__)
+def setup_basic_logging(level: int = logging.INFO) -> None:
+    logging.basicConfig(
+        level=level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        stream=sys.stdout
+    )
