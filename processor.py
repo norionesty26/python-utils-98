@@ -1,45 +1,38 @@
 from typing import Any, Callable, Dict, List, Optional
 
 
-class ProcessingError(Exception):
-    pass
+class DataProcessor:
+    def __init__(self, validator: Optional[Callable[[Dict[str, Any]], bool]] = None):
+        self.validator = validator or self._default_validator
+        self.processed_count = 0
+        self.failed_count = 0
 
+    @staticmethod
+    def _default_validator(item: Dict[str, Any]) -> bool:
+        if not isinstance(item, dict):
+            return False
+        if "id" not in item or not isinstance(item["id"], (int, str)):
+            return False
+        if "payload" not in item or item["payload"] is None:
+            return False
+        return True
 
-class BatchProcessor:
-    def __init__(self, fail_fast: bool = False) -> None:
-        self.fail_fast = fail_fast
-        self.errors: List[Dict[str, Any]] = []
-
-    def process_item(
-        self, item: Any, transform: Callable[[Any], Any]
-    ) -> Optional[Any]:
-        if item is None:
-            return None
-        try:
-            return transform(item)
-        except (ValueError, TypeError, ZeroDivisionError, KeyError) as err:
-            error_info = {
-                "item": item,
-                "error": str(err),
-                "type": type(err).__name__,
-            }
-            self.errors.append(error_info)
-            if self.fail_fast:
-                raise ProcessingError(f"Failed processing item: {err}") from err
-            return None
-
-    def process_batch(
-        self, items: List[Any], transform: Callable[[Any], Any]
-    ) -> List[Any]:
-        if not isinstance(items, list):
-            raise TypeError(f"Expected list, got {type(items).__name__}")
-
+    def process_batch(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         results = []
         for item in items:
-            res = self.process_item(item, transform)
-            if res is not None:
-                results.append(res)
+            if not self.validator(item):
+                self.failed_count += 1
+                continue
+
+            processed = self._process_single(item)
+            results.append(processed)
+            self.processed_count += 1
+
         return results
 
-    def clear_errors(self) -> None:
-        self.errors.clear()
+    def _process_single(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "id": item["id"],
+            "status": "processed",
+            "data": str(item["payload"]).strip().upper(),
+        }
