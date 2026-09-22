@@ -1,38 +1,39 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Iterable, Optional, Callable
 
 
-class DataProcessor:
-    def __init__(self, validator: Optional[Callable[[Dict[str, Any]], bool]] = None):
-        self.validator = validator or self._default_validator
-        self.processed_count = 0
-        self.failed_count = 0
+def batch_process(data: Iterable[Any], func: Callable[[Any], Any], chunk_size: int = 100) -> list[Any]:
+    """Process data in chunks to manage memory efficiency."""
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
 
-    @staticmethod
-    def _default_validator(item: Dict[str, Any]) -> bool:
-        if not isinstance(item, dict):
-            return False
-        if "id" not in item or not isinstance(item["id"], (int, str)):
-            return False
-        if "payload" not in item or item["payload"] is None:
-            return False
-        return True
+    results = []
+    chunk = []
+    for item in data:
+        chunk.append(item)
+        if len(chunk) == chunk_size:
+            results.extend(map(func, chunk))
+            chunk = []
+    
+    if chunk:
+        results.extend(map(func, chunk))
+    return results
 
-    def process_batch(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        results = []
-        for item in items:
-            if not self.validator(item):
-                self.failed_count += 1
-                continue
 
-            processed = self._process_single(item)
-            results.append(processed)
-            self.processed_count += 1
+def deep_get(data: dict[Any, Any], keys: str, default: Optional[Any] = None) -> Any:
+    """Retrieve nested dictionary values using dot notation."""
+    for key in keys.split('.'):
+        if not isinstance(data, dict) or key not in data:
+            return default
+        data = data[key]
+    return data
 
-        return results
 
-    def _process_single(self, item: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            "id": item["id"],
-            "status": "processed",
-            "data": str(item["payload"]).strip().upper(),
-        }
+def flatten(items: Iterable[Any]) -> list[Any]:
+    """Flatten nested iterables into a single list."""
+    result = []
+    for item in items:
+        if isinstance(item, (list, tuple, set)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
+    return result
