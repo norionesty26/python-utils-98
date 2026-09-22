@@ -1,45 +1,38 @@
-from typing import Dict, Any, Generator, Iterable, TypeVar, List
+import functools
+import time
+from typing import Callable, Any, Dict
 
-T = TypeVar('T')
+CACHE: Dict[tuple, Any] = {}
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flatten a nested dictionary.
+def memoize(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in CACHE:
+            CACHE[key] = func(*args, **kwargs)
+        return CACHE[key]
+    return wrapper
 
-    Args:
-        d: The dictionary to flatten.
-        parent_key: The prefix to prepend to keys.
-        sep: The separator between nested keys.
+def batch_process(items: list, size: int):
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
 
-    Returns:
-        A flattened dictionary.
-    """
-    items: List[tuple] = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+class PerformanceTimer:
+    def __enter__(self):
+        self.start = time.perf_counter()
+        return self
 
-def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
-    """Yield successive n-sized chunks from an iterable.
+    def __exit__(self, *args):
+        self.duration = time.perf_counter() - self.start
 
-    Args:
-        iterable: The iterable collection to chunk.
-        size: The size of each chunk.
+def fast_flatten(data: list) -> list:
+    return [item for sublist in data for item in sublist]
 
-    Yields:
-        A generator yielding chunks as lists.
-    """
-    iterator = iter(iterable)
-    while True:
-        chunk: List[T] = []
-        for _ in range(size):
-            try:
-                chunk.append(next(iterator))
-            except StopIteration:
-                if chunk:
-                    yield chunk
-                return
-        yield chunk
+def singleton(cls):
+    instances = {}
+    @functools.wraps(cls)
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    return get_instance
