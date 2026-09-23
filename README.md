@@ -1,46 +1,43 @@
 # python-utils-98
 
-A robust collection of high-performance Python utilities designed to streamline common data processing and system automation tasks. This library focuses on efficiency, type safety, and minimal dependencies for seamless integration into any production environment.
+A robust collection of high-performance Python utilities designed to streamline common programming tasks. This library focuses on providing clean, thread-safe, and dependency-minimal tools for daily development workflows.
 
 ## Features
 
-*   **Robust File I/O:** Simplified wrappers for handling recursive directory traversal, thread-safe logging, and automated cleanup of temporary storage.
-*   **Data Validation:** A lightweight set of decorators for enforcing schema constraints and data type integrity across complex JSON payloads.
-*   **Concurrent Execution:** Easy-to-implement task queuing and parallel execution primitives built on `concurrent.futures`.
-*   **Cross-Platform Pathing:** Unified path manipulation utilities that handle OS-specific path separators without extra configuration.
+*   **Robust File Operations:** Advanced context managers for safe file handling and automated cleanup of temporary directory structures.
+*   **Time-Series Decorators:** Lightweight `@timer` and `@retry` decorators to monitor execution latency and improve task resilience.
+*   **Type-Safe Collections:** Enhanced dictionary and list extensions that provide seamless data transformation and deep-merge capabilities.
+*   **Logging Helpers:** Pre-configured logging wrappers that ensure consistent formatting across distributed development environments.
 
 ## Installation
 
-Install the package via `pip` from PyPI:
+Install `python-utils-98` directly from PyPI using pip:
 
 ```bash
 pip install python-utils-98
 ```
 
-Alternatively, install from source for the latest development features:
+Alternatively, for local development:
 
 ```bash
 git clone https://github.com/Developer/python-utils-98.git
 cd python-utils-98
-pip install .
+pip install -e .
 ```
 
 ## Basic Usage
 
-The library is designed with a clean API, allowing you to import specific utilities as needed:
+Utilize the performance monitoring decorators to track function execution times in your existing scripts:
 
 ```python
-from pyutils98.file_ops import SafeFileWriter
-from pyutils98.validators import validate_schema
+from python_utils_98.decorators import timer
 
-# Initialize a protected file writer
-writer = SafeFileWriter('output.log')
-writer.append("Process initialized successfully.")
+@timer
+def process_data(data_points):
+    # Simulate heavy lifting
+    return sum(data_points)
 
-# Validate incoming data structures
-data = {"id": 1, "status": "active"}
-if validate_schema(data, {"id": int, "status": str}):
-    print("Payload integrity verified.")
+result = process_data([i for i in range(1000000)])
 ```
 
 ## License
