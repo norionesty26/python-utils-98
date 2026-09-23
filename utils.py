@@ -1,38 +1,31 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+import json
+from typing import Any, Dict, Optional
+from pathlib import Path
 
-CACHE: Dict[tuple, Any] = {}
+def load_json(path: str) -> Optional[Dict[str, Any]]:
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
 
-def memoize(func: Callable) -> Callable:
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        key = (func.__name__, args, frozenset(kwargs.items()))
-        if key not in CACHE:
-            CACHE[key] = func(*args, **kwargs)
-        return CACHE[key]
-    return wrapper
+def save_json(path: str, data: Dict[str, Any]) -> None:
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
-def batch_process(items: list, size: int):
-    for i in range(0, len(items), size):
-        yield items[i:i + size]
+def ensure_dir(path: str) -> None:
+    Path(path).mkdir(parents=True, exist_ok=True)
 
-class PerformanceTimer:
-    def __enter__(self):
-        self.start = time.perf_counter()
-        return self
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    def __exit__(self, *args):
-        self.duration = time.perf_counter() - self.start
-
-def fast_flatten(data: list) -> list:
-    return [item for sublist in data for item in sublist]
-
-def singleton(cls):
-    instances = {}
-    @functools.wraps(cls)
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-    return get_instance
+def chunk_list(data: list, size: int):
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
