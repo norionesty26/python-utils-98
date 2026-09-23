@@ -1,27 +1,26 @@
 import logging
-import sys
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+def setup_logger(name: str, log_file: str, level: int = logging.INFO) -> logging.Logger:
+    path = Path(log_file)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
     logger = logging.getLogger(name)
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        logger.setLevel(level)
-    return logger
+    logger.setLevel(level)
 
-def setup_basic_logging(level: int = logging.INFO) -> None:
-    logging.basicConfig(
-        level=level,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler(sys.stdout)]
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
-class LoggerMixin:
-    @property
-    def logger(self) -> logging.Logger:
-        return get_logger(self.__class__.__name__)
+    handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=10 * 1024 * 1024, 
+        backupCount=5
+    )
+    handler.setFormatter(formatter)
+
+    if not logger.handlers:
+        logger.addHandler(handler)
+
+    return logger
