@@ -1,58 +1,58 @@
-"""Validation utilities for common data types and structures."""
-
 import re
-from typing import Any, Dict, List, Optional, Type, TypeVar
-
-T = TypeVar("T")
-
-EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+from typing import Any, Optional, Union
 
 
-def is_email(value: str) -> bool:
-    """Validate if a given string is a valid email address."""
-    if not isinstance(value, str):
-        return False
-    return bool(EMAIL_REGEX.match(value))
+class ValidationError(ValueError):
+    """Raised when validation fails for input data."""
 
 
-def is_type(value: Any, expected_type: Type[T]) -> bool:
-    """Check if a value matches the expected type."""
-    return isinstance(value, expected_type)
+def validate_numeric_range(
+    value: Any,
+    min_val: Optional[Union[int, float]] = None,
+    max_val: Optional[Union[int, float]] = None,
+) -> float:
+    if value is None:
+        raise ValidationError("Value cannot be None")
+
+    try:
+        num = float(value)
+    except (TypeError, ValueError) as err:
+        raise ValidationError(f"Cannot convert {value!r} to numeric value") from err
+
+    if min_val is not None and num < min_val:
+        raise ValidationError(f"Value {num} is below minimum allowed {min_val}")
+    if max_val is not None and num > max_val:
+        raise ValidationError(f"Value {num} is above maximum allowed {max_val}")
+
+    return num
 
 
-def validate_dict_keys(
-    data: Dict[str, Any],
-    required_keys: List[str],
-    optional_keys: Optional[List[str]] = None,
-) -> bool:
-    """Ensure dictionary contains required keys and no unexpected keys."""
+def validate_email_address(email: Any) -> str:
+    if not isinstance(email, str):
+        raise ValidationError(f"Expected string, got {type(email).__name__}")
+
+    cleaned = email.strip()
+    if not cleaned:
+        raise ValidationError("Email address cannot be empty")
+
+    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    if not re.match(pattern, cleaned):
+        raise ValidationError(f"Invalid email format: {cleaned!r}")
+
+    return cleaned
+
+
+def safe_parse_json_key(data: dict[str, Any], key: str, expected_type: type) -> Any:
     if not isinstance(data, dict):
-        return False
+        raise ValidationError(f"Expected dictionary input, got {type(data).__name__}")
 
-    keys = set(data.keys())
-    req_set = set(required_keys)
+    if key not in data:
+        raise ValidationError(f"Missing required key: {key!r}")
 
-    if not req_set.issubset(keys):
-        return False
+    val = data[key]
+    if not isinstance(val, expected_type):
+        raise ValidationError(
+            f"Key {key!r} must be {expected_type.__name__}, got {type(val).__name__}"
+        )
 
-    if optional_keys is not None:
-        allowed_keys = req_set | set(optional_keys)
-        if not keys.issubset(allowed_keys):
-            return False
-
-    return True
-
-
-def in_range(
-    val: Any,
-    min_val: Optional[float] = None,
-    max_val: Optional[float] = None,
-) -> bool:
-    """Check if a numeric value falls within an optional inclusive range."""
-    if not isinstance(val, (int, float)):
-        return False
-    if min_val is not None and val < min_val:
-        return False
-    if max_val is not None and val > max_val:
-        return False
-    return True
+    return val
