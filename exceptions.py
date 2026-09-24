@@ -1,31 +1,28 @@
-class BaseUtilsError(Exception):
-    """Base exception for python-utils-98."""
+from typing import Optional, Any
 
-class ConfigurationError(BaseUtilsError):
-    """Raised when configuration is invalid."""
+class UtilsError(Exception):
+    """Base exception for python-utils-98 package."""
+    pass
 
-class ValidationError(BaseUtilsError):
-    """Raised when data validation fails."""
+class ConfigurationError(UtilsError):
+    """Raised when configuration requirements are not met."""
+    def __init__(self, message: str, key: Optional[str] = None) -> None:
+        self.key = key
+        super().__init__(f"{message}: {key}" if key else message)
 
-class ExecutionError(BaseUtilsError):
-    """Raised when a process execution fails."""
+class ValidationError(UtilsError):
+    """Raised when input data fails validation criteria."""
+    def __init__(self, message: str, value: Any = None) -> None:
+        self.value = value
+        super().__init__(message)
 
-def handle_error(e: Exception, logger=None) -> None:
-    """Centralized exception processing."""
-    if logger:
-        logger.error(f"{e.__class__.__name__}: {str(e)}")
-    raise e
+class ProcessingError(UtilsError):
+    """Raised during failure of core logic execution."""
+    def __init__(self, message: str, context: Optional[dict] = None) -> None:
+        self.context = context or {}
+        super().__init__(message)
 
-class ExceptionContext:
-    """Context manager for error suppression."""
-    def __init__(self, exception_type=Exception, suppress=False):
-        self.exception_type = exception_type
-        self.suppress = suppress
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type and issubclass(exc_type, self.exception_type):
-            return self.suppress
-        return False
+def raise_if_none(value: Any, name: str) -> None:
+    """Check if value is None and raise ValidationError."""
+    if value is None:
+        raise ValidationError(f"Missing required value: {name}")
