@@ -1,31 +1,19 @@
-import json
-from typing import Any, Dict, Optional
-from pathlib import Path
+import time
+import functools
+from typing import Callable, Any
 
-def load_json(path: str) -> Optional[Dict[str, Any]]:
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
-
-def save_json(path: str, data: Dict[str, Any]) -> None:
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
-
-def ensure_dir(path: str) -> None:
-    Path(path).mkdir(parents=True, exist_ok=True)
-
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
-
-def chunk_list(data: list, size: int):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+def retry(max_attempts: int = 3, delay: float = 1.0, exceptions: tuple = (Exception,)) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        raise
+                    time.sleep(delay)
+        return wrapper
+    return decorator
