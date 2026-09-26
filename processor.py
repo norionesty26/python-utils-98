@@ -1,39 +1,38 @@
-from typing import Any, Iterable, Optional, Callable
+from dataclasses import dataclass, field
+from typing import Any, Callable, List
 
 
-def batch_process(data: Iterable[Any], func: Callable[[Any], Any], chunk_size: int = 100) -> list[Any]:
-    """Process data in chunks to manage memory efficiency."""
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be positive")
-
-    results = []
-    chunk = []
-    for item in data:
-        chunk.append(item)
-        if len(chunk) == chunk_size:
-            results.extend(map(func, chunk))
-            chunk = []
-    
-    if chunk:
-        results.extend(map(func, chunk))
-    return results
+@dataclass
+class ProcessingResult:
+    success: bool
+    data: Any
+    errors: List[str] = field(default_factory=list)
 
 
-def deep_get(data: dict[Any, Any], keys: str, default: Optional[Any] = None) -> Any:
-    """Retrieve nested dictionary values using dot notation."""
-    for key in keys.split('.'):
-        if not isinstance(data, dict) or key not in data:
-            return default
-        data = data[key]
-    return data
+class DataProcessor:
+    def __init__(self) -> None:
+        self._pipeline: List[Callable[[Any], Any]] = []
 
+    def add_step(self, func: Callable[[Any], Any]) -> "DataProcessor":
+        self._pipeline.append(func)
+        return self
 
-def flatten(items: Iterable[Any]) -> list[Any]:
-    """Flatten nested iterables into a single list."""
-    result = []
-    for item in items:
-        if isinstance(item, (list, tuple, set)):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
+    def clear_pipeline(self) -> None:
+        self._pipeline.clear()
+
+    def process(self, data: Any) -> ProcessingResult:
+        current_data = data
+        errors: List[str] = []
+
+        for index, step in enumerate(self._pipeline):
+            try:
+                current_data = step(current_data)
+            except Exception as err:
+                step_name = getattr(step, "__name__", str(step))
+                errors.append(f"Step {index} ({step_name}) failed: {err}")
+                return ProcessingResult(success=False, data=None, errors=errors)
+
+        return ProcessingResult(success=True, data=current_data, errors=[])
+
+    def process_batch(self, items: List[Any]) -> List[ProcessingResult]:
+        return [self.process(item) for item in items]
