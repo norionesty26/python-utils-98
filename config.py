@@ -1,28 +1,27 @@
-import json
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-class ConfigLoader:
-    def __init__(self, defaults: Dict[str, Any] = None):
-        self.config = defaults or {}
+class Config:
+    _settings: Dict[str, Any] = {}
 
-    def load_from_file(self, filepath: str) -> None:
-        if os.path.exists(filepath):
-            with open(filepath, 'r') as f:
-                data = json.load(f)
-                self.config.update(data)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return self.config.get(key, default)
-
-    def load_from_env(self, prefix: str) -> None:
+    @classmethod
+    def load_env(cls, prefix: str = "APP_") -> None:
         for key, value in os.environ.items():
             if key.startswith(prefix):
-                clean_key = key[len(prefix):].lower()
-                self.config[clean_key] = value
+                cls._settings[key[len(prefix):].lower()] = value
 
-    def __getitem__(self, key: str) -> Any:
-        return self.config[key]
+    @classmethod
+    def get(cls, key: str, default: Optional[Any] = None) -> Any:
+        return cls._settings.get(key, default)
 
-    def __contains__(self, key: str) -> bool:
-        return key in self.config
+    @classmethod
+    def set(cls, key: str, value: Any) -> None:
+        cls._settings[key] = value
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._settings.clear()
+
+    @property
+    def all(self) -> Dict[str, Any]:
+        return self._settings.copy()
