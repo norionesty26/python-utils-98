@@ -1,38 +1,28 @@
-from dataclasses import dataclass, field
-from typing import Any, Callable, List
-
-
-@dataclass
-class ProcessingResult:
-    success: bool
-    data: Any
-    errors: List[str] = field(default_factory=list)
-
+import logging
+from typing import Any, List, Optional
 
 class DataProcessor:
-    def __init__(self) -> None:
-        self._pipeline: List[Callable[[Any], Any]] = []
+    def __init__(self, items: Optional[List[Any]] = None):
+        self.items = items or []
+        self.logger = logging.getLogger(__name__)
 
-    def add_step(self, func: Callable[[Any], Any]) -> "DataProcessor":
-        self._pipeline.append(func)
-        return self
+    def process_batch(self) -> List[Any]:
+        return [self._transform(item) for item in self.items if item is not None]
 
-    def clear_pipeline(self) -> None:
-        self._pipeline.clear()
+    def _transform(self, item: Any) -> Any:
+        if isinstance(item, str):
+            return item.strip().lower()
+        if isinstance(item, (int, float)):
+            return item * 2
+        return item
 
-    def process(self, data: Any) -> ProcessingResult:
-        current_data = data
-        errors: List[str] = []
+    def clear(self) -> None:
+        self.items.clear()
+        self.logger.info("processor items cleared")
 
-        for index, step in enumerate(self._pipeline):
-            try:
-                current_data = step(current_data)
-            except Exception as err:
-                step_name = getattr(step, "__name__", str(step))
-                errors.append(f"Step {index} ({step_name}) failed: {err}")
-                return ProcessingResult(success=False, data=None, errors=errors)
+    def add(self, item: Any) -> None:
+        self.items.append(item)
 
-        return ProcessingResult(success=True, data=current_data, errors=[])
-
-    def process_batch(self, items: List[Any]) -> List[ProcessingResult]:
-        return [self.process(item) for item in items]
+    @property
+    def count(self) -> int:
+        return len(self.items)
