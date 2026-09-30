@@ -1,22 +1,37 @@
-import time
-import functools
-from typing import Callable, Any, Type, Tuple
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
-def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-          tries: int = 3, 
-          delay: float = 1.0, 
-          backoff: float = 2.0) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions:
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+T = TypeVar('T')
+
+
+def compose(*functions: Callable[[Any], Any]) -> Callable[[Any], Any]:
+    """Compose multiple functions into a single pipeline."""
+    def pipeline(data: Any) -> Any:
+        for func in functions:
+            data = func(data)
+        return data
+    return pipeline
+
+
+def chunk_list(items: List[T], size: int) -> List[List[T]]:
+    """Split a list into smaller chunks of a specified size."""
+    if size <= 0:
+        raise ValueError("chunk size must be greater than zero")
+    return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+def dict_get_nested(data: Dict[str, Any], keys: List[str], default: Any = None) -> Any:
+    """Retrieve nested value from dictionary using a list of keys."""
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
+
+
+def apply_defaults(config: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge a configuration dictionary with default values."""
+    result = defaults.copy()
+    result.update(config)
+    return result
