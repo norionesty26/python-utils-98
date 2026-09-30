@@ -1,28 +1,39 @@
 import logging
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Tuple
+
+logger = logging.getLogger("processor")
+
+
+class ValidationError(Exception):
+    pass
+
 
 class DataProcessor:
-    def __init__(self, items: Optional[List[Any]] = None):
-        self.items = items or []
-        self.logger = logging.getLogger(__name__)
+    def __init__(self, schema: Dict[str, type]):
+        self.schema = schema
 
-    def process_batch(self) -> List[Any]:
-        return [self._transform(item) for item in self.items if item is not None]
+    def validate_record(self, record: Dict[str, Any]) -> None:
+        for key, expected_type in self.schema.items():
+            if key not in record:
+                raise ValidationError(f"Missing required field: {key}")
+            if not isinstance(record[key], expected_type):
+                raise ValidationError(
+                    f"Invalid type for {key}: expected {expected_type.__name__}, "
+                    f"got {type(record[key]).__name__}"
+                )
 
-    def _transform(self, item: Any) -> Any:
-        if isinstance(item, str):
-            return item.strip().lower()
-        if isinstance(item, (int, float)):
-            return item * 2
-        return item
+    def process_stream(
+        self, records: List[Dict[str, Any]]
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        valid_records = []
+        invalid_records = []
 
-    def clear(self) -> None:
-        self.items.clear()
-        self.logger.info("processor items cleared")
+        for record in records:
+            try:
+                self.validate_record(record)
+                valid_records.append(record)
+            except ValidationError as exc:
+                logger.warning("Record validation rejected: %s", exc)
+                invalid_records.append(record)
 
-    def add(self, item: Any) -> None:
-        self.items.append(item)
-
-    @property
-    def count(self) -> int:
-        return len(self.items)
+        return valid_records, invalid_records
