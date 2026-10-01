@@ -1,58 +1,32 @@
-import re
-from typing import Any, Optional, Union
+import logging
+from typing import Any, Dict, Optional
 
+logger = logging.getLogger(__name__)
 
-class ValidationError(ValueError):
-    """Raised when validation fails for input data."""
+class ValidationError(Exception):
+    """Custom exception for input validation failures."""
 
-
-def validate_numeric_range(
-    value: Any,
-    min_val: Optional[Union[int, float]] = None,
-    max_val: Optional[Union[int, float]] = None,
-) -> float:
-    if value is None:
-        raise ValidationError("Value cannot be None")
-
-    try:
-        num = float(value)
-    except (TypeError, ValueError) as err:
-        raise ValidationError(f"Cannot convert {value!r} to numeric value") from err
-
-    if min_val is not None and num < min_val:
-        raise ValidationError(f"Value {num} is below minimum allowed {min_val}")
-    if max_val is not None and num > max_val:
-        raise ValidationError(f"Value {num} is above maximum allowed {max_val}")
-
-    return num
-
-
-def validate_email_address(email: Any) -> str:
-    if not isinstance(email, str):
-        raise ValidationError(f"Expected string, got {type(email).__name__}")
-
-    cleaned = email.strip()
-    if not cleaned:
-        raise ValidationError("Email address cannot be empty")
-
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    if not re.match(pattern, cleaned):
-        raise ValidationError(f"Invalid email format: {cleaned!r}")
-
-    return cleaned
-
-
-def safe_parse_json_key(data: dict[str, Any], key: str, expected_type: type) -> Any:
+def validate_payload(data: Any, schema: Dict[str, type]) -> bool:
+    """Validates dictionary keys and types against a schema."""
     if not isinstance(data, dict):
-        raise ValidationError(f"Expected dictionary input, got {type(data).__name__}")
+        raise ValidationError(f"Expected dict, got {type(data).__name__}")
 
-    if key not in data:
-        raise ValidationError(f"Missing required key: {key!r}")
+    for key, expected_type in schema.items():
+        if key not in data:
+            raise ValidationError(f"Missing required key: {key}")
+        if not isinstance(data[key], expected_type):
+            raise ValidationError(
+                f"Invalid type for {key}: expected {expected_type.__name__}, "
+                f"got {type(data[key]).__name__}"
+            )
+    return True
 
-    val = data[key]
-    if not isinstance(val, expected_type):
-        raise ValidationError(
-            f"Key {key!r} must be {expected_type.__name__}, got {type(val).__name__}"
-        )
-
-    return val
+def process_safe(data: Any, schema: Dict[str, type], func: callable) -> Optional[Any]:
+    """Wrapper to process data with input validation."""
+    try:
+        if validate_payload(data, schema):
+            return func(data)
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        return None
+    return None
