@@ -1,31 +1,24 @@
-import logging
-from typing import Any, Callable, Optional
+import json
+from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
+def safe_json_load(data: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Parses JSON string into dictionary with fallback."""
+    try:
+        return json.loads(data)
+    except (json.JSONDecodeError, TypeError):
+        return default or {}
 
-class ExecutionHandler:
-    def __init__(self, fallback: Any = None):
-        self.fallback = fallback
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flattens nested dictionary structure."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-    def safe_execute(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except (ValueError, TypeError, AttributeError) as e:
-            logger.error(f"Data processing error: {e}")
-            return self.fallback
-        except Exception as e:
-            logger.critical(f"Unexpected system failure: {e}")
-            raise
-
-def validate_input(data: Any) -> bool:
-    if data is None:
-        return False
-    if isinstance(data, (dict, list)) and not data:
-        return False
-    return True
-
-def process_safe(func: Callable, data: Any, default: Any = None) -> Any:
-    if not validate_input(data):
-        return default
-    handler = ExecutionHandler(fallback=default)
-    return handler.safe_execute(func, data)
+def sanitize_data(data: Dict[str, Any], keys_to_remove: list) -> Dict[str, Any]:
+    """Removes sensitive keys from dictionary."""
+    return {k: v for k, v in data.items() if k not in keys_to_remove}
