@@ -1,32 +1,29 @@
-import logging
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+EMAIL_REGEX = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
 
 class ValidationError(Exception):
-    """Custom exception for input validation failures."""
+    pass
 
-def validate_payload(data: Any, schema: Dict[str, type]) -> bool:
-    """Validates dictionary keys and types against a schema."""
-    if not isinstance(data, dict):
-        raise ValidationError(f"Expected dict, got {type(data).__name__}")
+def validate_email(email: Any) -> str:
+    if not isinstance(email, str) or not EMAIL_REGEX.match(email):
+        raise ValidationError(f"invalid email format: {email}")
+    return email
 
-    for key, expected_type in schema.items():
+def validate_range(value: int, min_val: int, max_val: int) -> int:
+    if not (min_val <= value <= max_val):
+        raise ValidationError(f"value {value} outside range [{min_val}, {max_val}]")
+    return value
+
+def validate_not_empty(value: Optional[str]) -> str:
+    if not value or not value.strip():
+        raise ValidationError("value cannot be empty")
+    return value.strip()
+
+def validate_schema(data: dict, schema: dict) -> bool:
+    for key, validator in schema.items():
         if key not in data:
-            raise ValidationError(f"Missing required key: {key}")
-        if not isinstance(data[key], expected_type):
-            raise ValidationError(
-                f"Invalid type for {key}: expected {expected_type.__name__}, "
-                f"got {type(data[key]).__name__}"
-            )
+            raise ValidationError(f"missing required key: {key}")
+        validator(data[key])
     return True
-
-def process_safe(data: Any, schema: Dict[str, type], func: callable) -> Optional[Any]:
-    """Wrapper to process data with input validation."""
-    try:
-        if validate_payload(data, schema):
-            return func(data)
-    except ValidationError as e:
-        logger.error(f"Validation failed: {e}")
-        return None
-    return None
