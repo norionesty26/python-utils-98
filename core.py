@@ -1,5 +1,6 @@
 import functools
-from typing import Any, Callable, Dict
+import time
+from typing import Callable, Any, Dict
 
 CACHE: Dict[tuple, Any] = {}
 
@@ -13,19 +14,17 @@ def memoize(func: Callable) -> Callable:
     return wrapper
 
 class DataProcessor:
+    __slots__ = ('data', 'timestamp')
+
     def __init__(self, data: list):
-        self._data = data
+        self.data = data
+        self.timestamp = time.monotonic()
 
-    @memoize
     def process_batch(self, factor: int) -> list:
-        return [x * factor for x in self._data]
+        return [x * factor for x in self.data]
 
-    def clear_cache(self) -> None:
-        CACHE.clear()
+def optimized_sum(numbers: list) -> float:
+    return sum(numbers)
 
-def batch_transform(items: list, operation: Callable) -> list:
-    return list(map(operation, items))
-
-if __name__ == '__main__':
-    processor = DataProcessor(list(range(1000)))
-    print(processor.process_batch(2))
+def clear_cache() -> None:
+    CACHE.clear()
