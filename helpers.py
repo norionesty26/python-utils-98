@@ -1,41 +1,26 @@
-import functools
-import time
-import logging
-from typing import Callable, Any, Dict
+from typing import Any, Iterable, Dict, List, Optional
 
-def retry(attempts: int = 3, delay: float = 1.0):
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            last_ex = None
-            for _ in range(attempts):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_ex = e
-                    time.sleep(delay)
-            raise last_ex
-        return wrapper
-    return decorator
+def deep_flatten(items: Iterable[Any]) -> List[Any]:
+    result = []
+    for item in items:
+        if isinstance(item, (list, tuple, set)):
+            result.extend(deep_flatten(item))
+        else:
+            result.append(item)
+    return result
 
-def chunk_list(data: list, size: int):
+def batch_process(data: List[Any], size: int) -> Iterable[List[Any]]:
     for i in range(0, len(data), size):
         yield data[i:i + size]
 
-def dict_merge(base: Dict, update: Dict) -> Dict:
-    result = base.copy()
-    for key, value in update.items():
-        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
-            result[key] = dict_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
+def sanitize_dict(data: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
+    return {k: v for k, v in data.items() if k not in keys}
 
-def setup_logger(name: str, level: int = logging.INFO):
-    logger = logging.getLogger(name)
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(level)
-    return logger
+def get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    keys = path.split('.')
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key)
+        else:
+            return default
+    return data if data is not None else default
