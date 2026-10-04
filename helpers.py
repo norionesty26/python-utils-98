@@ -1,26 +1,22 @@
-from typing import Any, Iterable, Dict, List, Optional
+import re
 
-def deep_flatten(items: Iterable[Any]) -> List[Any]:
-    result = []
+def validate_input(data: str) -> bool:
+    """Validate that the input is non-empty and alphanumeric."""
+    return isinstance(data, str) and bool(re.match(r'^[a-zA-Z0-9]+$', data))
+
+def process_main_loop(items: list):
+    """Process items with strict validation constraints."""
+    results = []
     for item in items:
-        if isinstance(item, (list, tuple, set)):
-            result.extend(deep_flatten(item))
-        else:
-            result.append(item)
-    return result
+        if not validate_input(item):
+            raise ValueError(f"invalid input encountered: {item}")
+        results.append(item.lower())
+    return results
 
-def batch_process(data: List[Any], size: int) -> Iterable[List[Any]]:
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
-
-def sanitize_dict(data: Dict[str, Any], keys: List[str]) -> Dict[str, Any]:
-    return {k: v for k, v in data.items() if k not in keys}
-
-def get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    keys = path.split('.')
-    for key in keys:
-        if isinstance(data, dict):
-            data = data.get(key)
-        else:
-            return default
-    return data if data is not None else default
+if __name__ == "__main__":
+    data_stream = ["Alpha1", "Beta2", "Gamma3"]
+    try:
+        processed = process_main_loop(data_stream)
+        print(f"Processed: {processed}")
+    except ValueError as e:
+        print(f"Processing error: {e}")
