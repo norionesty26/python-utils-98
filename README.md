@@ -1,47 +1,53 @@
 # python-utils-98
 
-A robust collection of high-performance Python utilities designed to streamline common programming tasks. This library focuses on providing clean, thread-safe, and dependency-minimal tools for daily development workflows.
+A collection of lightweight, high-performance Python utilities designed to streamline daily automation and data processing tasks. This toolkit eliminates boilerplate code by providing robust wrappers for common file operations, logging, and concurrency management.
 
 ## Features
 
-*   **Robust File Operations:** Advanced context managers for safe file handling and automated cleanup of temporary directory structures.
-*   **Time-Series Decorators:** Lightweight `@timer` and `@retry` decorators to monitor execution latency and improve task resilience.
-*   **Type-Safe Collections:** Enhanced dictionary and list extensions that provide seamless data transformation and deep-merge capabilities.
-*   **Logging Helpers:** Pre-configured logging wrappers that ensure consistent formatting across distributed development environments.
+*   **FileStream API:** Simplified context managers for handling large file I/O operations without memory overflows.
+*   **Safe-Thread Executor:** A clean wrapper around `concurrent.futures` with built-in exception handling and result logging.
+*   **Config Loader:** A unified interface to load, parse, and validate environment variables and JSON/YAML configuration files.
+*   **Time-it Decorator:** A decorator suite for precision profiling and benchmarking of individual functions or class methods.
 
 ## Installation
 
-Install `python-utils-98` directly from PyPI using pip:
+Install the package directly from PyPI:
 
 ```bash
 pip install python-utils-98
 ```
 
-Alternatively, for local development:
+For development mode, clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/Developer/python-utils-98.git
 cd python-utils-98
-pip install -e .
+pip install -r requirements.txt
 ```
 
-## Basic Usage
+## Usage
 
-Utilize the performance monitoring decorators to track function execution times in your existing scripts:
+Easily profile your code or manage file operations with minimal setup:
 
 ```python
-from python_utils_98.decorators import timer
+from pyutils98 import timer, FileStream
 
+# Benchmark any function with a single decorator
 @timer
-def process_data(data_points):
-    # Simulate heavy lifting
-    return sum(data_points)
+def heavy_computation():
+    return sum(i * i for i in range(1000000))
 
-result = process_data([i for i in range(1000000)])
+# Safe file writing without manual closing
+with FileStream("data.txt", mode="w") as f:
+    f.write("System log entry")
 ```
+
+## Contributing
+
+Contributions are welcome! Please open an issue to discuss proposed changes or submit a pull request with unit tests covering your new functionality.
 
 ## License
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Distributed under the MIT License. See `LICENSE` for more information.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
