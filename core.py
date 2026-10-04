@@ -1,42 +1,40 @@
-from functools import lru_cache, wraps
-from typing import Any, Callable, Iterable, Iterator, List, TypeVar
+from collections import defaultdict
+from functools import wraps
+from typing import Any, Callable, Dict, List, Sequence, TypeVar
 
 T = TypeVar("T")
+R = TypeVar("R")
 
 
-class BatchProcessor:
-    def __init__(self, batch_size: int = 1000):
-        if batch_size <= 0:
-            raise ValueError("batch_size must be greater than 0")
-        self.batch_size = batch_size
-
-    def chunk(self, iterable: Iterable[T]) -> Iterator[List[T]]:
-        batch = []
-        for item in iterable:
-            batch.append(item)
-            if len(batch) == self.batch_size:
-                yield batch
-                batch = []
-        if batch:
-            yield batch
-
-
-def memoize(maxsize: int = 128) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        cached_func = lru_cache(maxsize=maxsize)(func)
-
+def memoize_method(maxsize: int = 128):
+    def decorator(func: Callable[..., R]) -> Callable[..., R]:
         @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            if kwargs:
-                return cached_func(*args, tuple(sorted(kwargs.items())))
-            return cached_func(*args)
+        def wrapper(self, *args: Any, **kwargs: Any) -> R:
+            key = (args, tuple(sorted(kwargs.items())))
+            if not hasattr(self, "_cache"):
+                self._cache: Dict[str, Any] = defaultdict(dict)
+            func_cache = self._cache[func.__name__]
+            if key not in func_cache:
+                if len(func_cache) >= maxsize:
+                    func_cache.clear()
+                func_cache[key] = func(self, *args, **kwargs)
+            return func_cache[key]
 
-        wrapper.cache_clear = cached_func.cache_clear
-        wrapper.cache_info = cached_func.cache_info
         return wrapper
 
     return decorator
 
 
-def fast_flatten(nested_iterable: Iterable[Iterable[T]]) -> List[T]:
-    return [item for sublist in nested_iterable for item in sublist]
+class BatchExecutor:
+    def __init__(self, batch_size: int = 100):
+        self.batch_size = max(1, batch_size)
+
+    def chunk_sequence(self, sequence: Sequence[T]) -> List[Sequence[T]]:
+        size = self.batch_size
+        return [sequence[i : i + size] for i in range(0, len(sequence), size)]
+
+    def map_batched(self, func: Callable[[T], R], items: Sequence[T]) -> List[R]:
+        results: List[R] = []
+        for chunk in self.chunk_sequence(items):
+            results.extend(map(func, chunk))
+        return results
