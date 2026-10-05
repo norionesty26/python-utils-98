@@ -1,40 +1,21 @@
-from collections import defaultdict
-from functools import wraps
-from typing import Any, Callable, Dict, List, Sequence, TypeVar
+import time
+import functools
+from typing import Callable, Any, Type, Tuple
 
-T = TypeVar("T")
-R = TypeVar("R")
-
-
-def memoize_method(maxsize: int = 128):
-    def decorator(func: Callable[..., R]) -> Callable[..., R]:
-        @wraps(func)
-        def wrapper(self, *args: Any, **kwargs: Any) -> R:
-            key = (args, tuple(sorted(kwargs.items())))
-            if not hasattr(self, "_cache"):
-                self._cache: Dict[str, Any] = defaultdict(dict)
-            func_cache = self._cache[func.__name__]
-            if key not in func_cache:
-                if len(func_cache) >= maxsize:
-                    func_cache.clear()
-                func_cache[key] = func(self, *args, **kwargs)
-            return func_cache[key]
-
+def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
+          attempts: int = 3, 
+          delay: float = 1.0) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for i in range(attempts):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    if i < attempts - 1:
+                        time.sleep(delay * (2 ** i))
+            raise last_exception
         return wrapper
-
     return decorator
-
-
-class BatchExecutor:
-    def __init__(self, batch_size: int = 100):
-        self.batch_size = max(1, batch_size)
-
-    def chunk_sequence(self, sequence: Sequence[T]) -> List[Sequence[T]]:
-        size = self.batch_size
-        return [sequence[i : i + size] for i in range(0, len(sequence), size)]
-
-    def map_batched(self, func: Callable[[T], R], items: Sequence[T]) -> List[R]:
-        results: List[R] = []
-        for chunk in self.chunk_sequence(items):
-            results.extend(map(func, chunk))
-        return results
