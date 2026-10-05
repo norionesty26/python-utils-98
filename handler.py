@@ -1,24 +1,38 @@
-import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Iterator, List
 
-def safe_json_load(data: str, default: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Parses JSON string into dictionary with fallback."""
-    try:
-        return json.loads(data)
-    except (json.JSONDecodeError, TypeError):
-        return default or {}
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flattens nested dictionary structure."""
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+class ValidationError(ValueError):
+    pass
 
-def sanitize_data(data: Dict[str, Any], keys_to_remove: list) -> Dict[str, Any]:
-    """Removes sensitive keys from dictionary."""
-    return {k: v for k, v in data.items() if k not in keys_to_remove}
+
+class InputHandler:
+    def __init__(self, required_keys: List[str]):
+        self.required_keys = required_keys
+
+    def validate(self, data: Any) -> Dict[str, Any]:
+        if not isinstance(data, dict):
+            raise ValidationError("Input must be a dictionary")
+
+        for key in self.required_keys:
+            if key not in data:
+                raise ValidationError(f"Missing required key: {key}")
+            if data[key] is None or data[key] == "":
+                raise ValidationError(f"Empty value for required key: {key}")
+
+        return data
+
+    def process_stream(self, stream: Iterable[Any]) -> Iterator[Dict[str, Any]]:
+        for index, item in enumerate(stream):
+            try:
+                validated = self.validate(item)
+                yield {
+                    "status": "success",
+                    "index": index,
+                    "data": validated,
+                }
+            except ValidationError as err:
+                yield {
+                    "status": "error",
+                    "index": index,
+                    "error": str(err),
+                }
