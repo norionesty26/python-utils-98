@@ -1,28 +1,29 @@
-from typing import Optional, Any
-
 class UtilsError(Exception):
-    """Base exception for python-utils-98 package."""
-    pass
+    """Base exception for python-utils-98"""
 
 class ConfigurationError(UtilsError):
-    """Raised when configuration requirements are not met."""
-    def __init__(self, message: str, key: Optional[str] = None) -> None:
-        self.key = key
-        super().__init__(f"{message}: {key}" if key else message)
+    """Raised when configuration is invalid"""
 
 class ValidationError(UtilsError):
-    """Raised when input data fails validation criteria."""
-    def __init__(self, message: str, value: Any = None) -> None:
-        self.value = value
-        super().__init__(message)
+    """Raised when data validation fails"""
 
 class ProcessingError(UtilsError):
-    """Raised during failure of core logic execution."""
-    def __init__(self, message: str, context: Optional[dict] = None) -> None:
-        self.context = context or {}
-        super().__init__(message)
+    """Raised when data processing fails"""
 
-def raise_if_none(value: Any, name: str) -> None:
-    """Check if value is None and raise ValidationError."""
-    if value is None:
-        raise ValidationError(f"Missing required value: {name}")
+def handle_exception(exc: Exception) -> None:
+    if isinstance(exc, UtilsError):
+        print(f"Utils Error: {exc}")
+    else:
+        print(f"Unexpected Error: {exc}")
+
+class ExceptionContext:
+    def __init__(self, exception_type: type):
+        self.exception_type = exception_type
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None and issubclass(exc_type, self.exception_type):
+            return True
+        return False
