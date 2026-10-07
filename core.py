@@ -1,31 +1,54 @@
-import logging
-from typing import Any, Callable, Optional, TypeVar, Union
+from typing import Any, Dict, List, Union
 
-T = TypeVar('T')
 
-logger = logging.getLogger(__name__)
+def flatten_dict(
+    d: Dict[str, Any], parent_key: str = "", sep: str = "."
+) -> Dict[str, Any]:
+    items: List[tuple] = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
-class ExecutionError(Exception):
-    pass
 
-def safe_execute(func: Callable[..., T], *args: Any, **kwargs: Any) -> Optional[T]:
-    try:
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, AttributeError, KeyError) as e:
-        logger.error(f'Validation error during execution: {e}')
-    except Exception as e:
-        logger.critical(f'Unexpected system failure: {e}', exc_info=True)
-    return None
+def unflatten_dict(d: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+    for key, value in d.items():
+        parts = key.split(sep)
+        target = result
+        for part in parts[:-1]:
+            target = target.setdefault(part, {})
+        target[parts[-1]] = value
+    return result
 
-def validate_input(data: Any, expected_type: type) -> bool:
-    if data is None:
-        return False
-    if not isinstance(data, expected_type):
-        logger.warning(f'Input type mismatch: expected {expected_type}, got {type(data)}')
-        return False
-    return True
 
-def process_data(data: Any, transform: Callable[[Any], T]) -> Optional[T]:
-    if not validate_input(data, (str, int, float, dict, list)):
-        return None
-    return safe_execute(transform, data)
+def deep_merge(
+    dict1: Dict[str, Any], dict2: Dict[str, Any]
+) -> Dict[str, Any]:
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if (
+            key in result
+            and isinstance(result[key], dict)
+            and isinstance(value, dict)
+        ):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def get_deep(
+    d: Dict[str, Any], path: Union[str, List[str]], default: Any = None
+) -> Any:
+    keys = path.split(".") if isinstance(path, str) else path
+    current = d
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
