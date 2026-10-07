@@ -1,30 +1,31 @@
-import functools
-import itertools
-from typing import Any, Callable, Generator, Iterable, Sequence
+import logging
+from typing import Any, Callable, Optional, TypeVar, Union
 
+T = TypeVar('T')
 
-class FastBatchProcessor:
-    __slots__ = ("_batch_size", "_transform")
+logger = logging.getLogger(__name__)
 
-    def __init__(self, transform: Callable[[Any], Any], batch_size: int = 100):
-        if batch_size <= 0:
-            raise ValueError("batch_size must be greater than zero")
-        self._batch_size = batch_size
-        self._transform = transform
+class ExecutionError(Exception):
+    pass
 
-    def process_stream(self, items: Iterable[Any]) -> Generator[list[Any], None, None]:
-        iterator = iter(items)
-        while True:
-            batch = list(itertools.islice(iterator, self._batch_size))
-            if not batch:
-                break
-            yield [self._transform(item) for item in batch]
+def safe_execute(func: Callable[..., T], *args: Any, **kwargs: Any) -> Optional[T]:
+    try:
+        return func(*args, **kwargs)
+    except (ValueError, TypeError, AttributeError, KeyError) as e:
+        logger.error(f'Validation error during execution: {e}')
+    except Exception as e:
+        logger.critical(f'Unexpected system failure: {e}', exc_info=True)
+    return None
 
-    def process_flat(self, items: Sequence[Any]) -> list[Any]:
-        transform = self._transform
-        return [transform(item) for item in items]
+def validate_input(data: Any, expected_type: type) -> bool:
+    if data is None:
+        return False
+    if not isinstance(data, expected_type):
+        logger.warning(f'Input type mismatch: expected {expected_type}, got {type(data)}')
+        return False
+    return True
 
-
-@functools.lru_cache(maxsize=1024)
-def memoized_compute(key: str, cost_factor: int = 1) -> int:
-    return sum(ord(char) * cost_factor for char in key)
+def process_data(data: Any, transform: Callable[[Any], T]) -> Optional[T]:
+    if not validate_input(data, (str, int, float, dict, list)):
+        return None
+    return safe_execute(transform, data)
