@@ -1,21 +1,30 @@
-import time
 import functools
-from typing import Callable, Any, Type, Tuple
+import itertools
+from typing import Any, Callable, Generator, Iterable, Sequence
 
-def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-          attempts: int = 3, 
-          delay: float = 1.0) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            for i in range(attempts):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    if i < attempts - 1:
-                        time.sleep(delay * (2 ** i))
-            raise last_exception
-        return wrapper
-    return decorator
+
+class FastBatchProcessor:
+    __slots__ = ("_batch_size", "_transform")
+
+    def __init__(self, transform: Callable[[Any], Any], batch_size: int = 100):
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than zero")
+        self._batch_size = batch_size
+        self._transform = transform
+
+    def process_stream(self, items: Iterable[Any]) -> Generator[list[Any], None, None]:
+        iterator = iter(items)
+        while True:
+            batch = list(itertools.islice(iterator, self._batch_size))
+            if not batch:
+                break
+            yield [self._transform(item) for item in batch]
+
+    def process_flat(self, items: Sequence[Any]) -> list[Any]:
+        transform = self._transform
+        return [transform(item) for item in items]
+
+
+@functools.lru_cache(maxsize=1024)
+def memoized_compute(key: str, cost_factor: int = 1) -> int:
+    return sum(ord(char) * cost_factor for char in key)
