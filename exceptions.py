@@ -1,29 +1,22 @@
-class DataHandlingError(Exception):
-    """Base exception for data operations."""
+class BaseUtilsError(Exception):
+    """Base exception for python-utils-98."""
 
-class ValidationError(DataHandlingError):
-    """Raised when data fails schema validation."""
 
-class ProcessingError(DataHandlingError):
-    """Raised when data transformation fails."""
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration is invalid."""
 
-class ConfigurationError(DataHandlingError):
-    """Raised when system configuration is invalid."""
 
-def raise_if_none(data, label="data"):
-    if data is None:
-        raise ValidationError(f"Missing required field: {label}")
-    return data
+class ValidationError(BaseUtilsError):
+    """Raised when data validation fails."""
 
-def validate_type(data, expected_type, label="data"):
-    if not isinstance(data, expected_type):
-        raise ValidationError(
-            f"{label} must be {expected_type.__name__}, got {type(data).__name__}"
-        )
-    return data
 
-def safe_execute(func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        raise ProcessingError(f"Operation failed: {str(e)}") from e
+class ProcessingError(BaseUtilsError):
+    """Raised during internal processing stages."""
+
+
+class ResourceNotFoundError(BaseUtilsError):
+    """Raised when a requested resource is missing."""
+
+
+class OperationTimeoutError(BaseUtilsError):
+    """Raised when an operation exceeds duration limits."""
