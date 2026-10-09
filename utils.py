@@ -1,40 +1,22 @@
-from typing import Any, Dict, List, Optional
-import json
 import os
+from typing import Any, Dict, List, Optional
 
+def clean_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in data.items() if v is not None}
 
-def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def get_env_var(key: str, default: Optional[str] = None) -> str:
+    return os.environ.get(key, default or "")
 
-
-def safe_load_json(filepath: str) -> Optional[Dict[str, Any]]:
-    if not os.path.exists(filepath):
-        return None
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return None
-
-
-def chunk_list(data: List[Any], size: int) -> List[List[Any]]:
+def batch_process(items: List[Any], size: int) -> List[List[Any]]:
     if size <= 0:
-        raise ValueError("Chunk size must be positive")
-    return [data[i:i + size] for i in range(0, len(data), size)]
+        raise ValueError("Batch size must be positive")
+    return [items[i : i + size] for i in range(0, len(items), size)]
 
+def safe_getattr(obj: Any, attr: str, default: Any = None) -> Any:
+    try:
+        return getattr(obj, attr, default)
+    except AttributeError:
+        return default
 
-def deep_get(data: Dict[str, Any], path: str, default: Any = None) -> Any:
-    keys = path.split('.')
-    for key in keys:
-        if isinstance(data, dict):
-            data = data.get(key, default)
-        else:
-            return default
-    return data
+def flatten_list(nested: List[List[Any]]) -> List[Any]:
+    return [item for sublist in nested for item in sublist]
