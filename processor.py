@@ -1,39 +1,30 @@
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 
-logger = logging.getLogger("processor")
+logger = logging.getLogger(__name__)
 
+def validate_payload(data: Any) -> bool:
+    if not isinstance(data, dict):
+        return False
+    required_keys = {'id', 'value', 'timestamp'}
+    return all(k in data for k in required_keys)
 
-class ValidationError(Exception):
-    pass
+def process_stream(data_stream: list[Dict[str, Any]]) -> None:
+    for entry in data_stream:
+        if not validate_payload(entry):
+            logger.warning(f"Skipping invalid payload: {entry}")
+            continue
+        
+        try:
+            result = entry['value'] * 2
+            logger.info(f"Processed {entry['id']}: {result}")
+        except (TypeError, KeyError) as e:
+            logger.error(f"Processing error for {entry.get('id')}: {e}")
 
-
-class DataProcessor:
-    def __init__(self, schema: Dict[str, type]):
-        self.schema = schema
-
-    def validate_record(self, record: Dict[str, Any]) -> None:
-        for key, expected_type in self.schema.items():
-            if key not in record:
-                raise ValidationError(f"Missing required field: {key}")
-            if not isinstance(record[key], expected_type):
-                raise ValidationError(
-                    f"Invalid type for {key}: expected {expected_type.__name__}, "
-                    f"got {type(record[key]).__name__}"
-                )
-
-    def process_stream(
-        self, records: List[Dict[str, Any]]
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        valid_records = []
-        invalid_records = []
-
-        for record in records:
-            try:
-                self.validate_record(record)
-                valid_records.append(record)
-            except ValidationError as exc:
-                logger.warning("Record validation rejected: %s", exc)
-                invalid_records.append(record)
-
-        return valid_records, invalid_records
+if __name__ == "__main__":
+    sample_data = [
+        {'id': 1, 'value': 10, 'timestamp': 1625097600},
+        {'invalid': 'data'},
+        {'id': 2, 'value': 20, 'timestamp': 1625097601}
+    ]
+    process_stream(sample_data)
