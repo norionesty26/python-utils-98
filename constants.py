@@ -1,23 +1,24 @@
-from typing import Final
+from typing import Final, Any, Dict
 
-# Application configuration constants
-DEFAULT_TIMEOUT: Final[int] = 30
-MAX_RETRIES: Final[int] = 3
-CHUNK_SIZE: Final[int] = 4096
+# Data handling thresholds and constraints
+DEFAULT_CHUNK_SIZE: Final[int] = 1024
+MAX_RETRY_ATTEMPTS: Final[int] = 3
+TIMEOUT_SECONDS: Final[float] = 30.0
 
-# System path patterns
-LOG_DIR: Final[str] = "/var/log/python-utils-98"
-TEMP_DIR: Final[str] = "/tmp/python-utils-98"
+# Default data mappings
+EMPTY_MAP: Final[Dict[Any, Any]] = {}
+SUPPORTED_ENCODINGS: Final[tuple] = ('utf-8', 'ascii', 'latin-1')
 
-# Encoding and validation constants
-ENCODING: Final[str] = "utf-8"
-SUPPORTED_EXTENSIONS: Final[tuple[str, ...]] = (".json", ".yaml", ".toml")
+# Error and status messages
+ERROR_MSG_INVALID_INPUT: Final[str] = 'Invalid data input format provided'
+ERROR_MSG_TIMEOUT: Final[str] = 'Operation timed out during execution'
 
-# Environment keys
-ENV_PREFIX: Final[str] = "PU98"
+class DataConstants:
+    """Namespace for application-wide configuration constants."""
+    @classmethod
+    def get_supported_encodings(cls) -> tuple:
+        return SUPPORTED_ENCODINGS
 
-class ExitCodes:
-    SUCCESS: int = 0
-    ERROR_GENERAL: int = 1
-    ERROR_CONFIG: int = 2
-    ERROR_IO: int = 3
+    @classmethod
+    def get_max_retries(cls) -> int:
+        return MAX_RETRY_ATTEMPTS
