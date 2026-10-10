@@ -1,31 +1,47 @@
-from typing import Any, Iterable, Callable, TypeVar
+import logging
+from typing import Any, Dict, List, Tuple
 
-T = TypeVar('T')
-
-
-def chunker(iterable: Iterable[T], size: int) -> Iterable[list[T]]:
-    args = [iter(iterable)] * size
-    return ([e for e in t if e is not None] for t in zip(*args))
+logger = logging.getLogger(__name__)
 
 
-def flatten(nested: Iterable[Iterable[T]]) -> list[T]:
-    return [item for sublist in nested for item in sublist]
+class ValidationError(Exception):
+    pass
 
 
-def compose(*functions: Callable[[Any], Any]) -> Callable[[Any], Any]:
-    def inner(arg: Any) -> Any:
-        for func in functions:
-            arg = func(arg)
-        return arg
-    return inner
+def validate_item(item: Any) -> Dict[str, Any]:
+    if not isinstance(item, dict):
+        raise ValidationError(f"Expected dict input, got {type(item).__name__}")
+
+    if "id" not in item:
+        raise ValidationError("Missing required field 'id'")
+
+    if "value" not in item:
+        raise ValidationError("Missing required field 'value'")
+
+    if not isinstance(item["value"], (int, float)):
+        raise ValidationError(f"Invalid value type: {type(item['value']).__name__}")
+
+    return item
 
 
-def unique(items: Iterable[T]) -> list[T]:
-    return list(dict.fromkeys(items))
+def process_batch(items: List[Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    successful = []
+    failed = []
 
+    for idx, raw_item in enumerate(items):
+        try:
+            validated = validate_item(raw_item)
+            processed_data = {
+                "id": validated["id"],
+                "processed_value": round(float(validated["value"]), 2),
+                "status": "success",
+            }
+            successful.append(processed_data)
+        except ValidationError as err:
+            logger.warning(f"Validation failed at index {idx}: {err}")
+            failed.append({"index": idx, "raw": raw_item, "error": str(err)})
+        except Exception as err:
+            logger.error(f"Unexpected error processing index {idx}: {err}")
+            failed.append({"index": idx, "raw": raw_item, "error": f"Internal error: {err}"})
 
-def batch_process(items: Iterable[T], func: Callable[[T], Any], size: int = 10) -> list[Any]:
-    results = []
-    for batch in chunker(items, size):
-        results.extend([func(item) for item in batch])
-    return results
+    return successful, failed
