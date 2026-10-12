@@ -1,54 +1,25 @@
-from typing import Any, Dict, List, Union
+import sys
 
+def validate_input(data):
+    if not isinstance(data, (str, int)):
+        raise ValueError(f'Invalid input type: {type(data).__name__}')
+    return True
 
-def flatten_dict(
-    d: Dict[str, Any], parent_key: str = "", sep: str = "."
-) -> Dict[str, Any]:
-    items: List[tuple] = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def process_item(item):
+    return f'Processed: {item}'
 
+def main_loop(items):
+    results = []
+    for item in items:
+        try:
+            validate_input(item)
+            results.append(process_item(item))
+        except (ValueError, TypeError) as e:
+            print(f'Skipping invalid item {item}: {e}', file=sys.stderr)
+            continue
+    return results
 
-def unflatten_dict(d: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
-    for key, value in d.items():
-        parts = key.split(sep)
-        target = result
-        for part in parts[:-1]:
-            target = target.setdefault(part, {})
-        target[parts[-1]] = value
-    return result
-
-
-def deep_merge(
-    dict1: Dict[str, Any], dict2: Dict[str, Any]
-) -> Dict[str, Any]:
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
-            result[key] = deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-
-def get_deep(
-    d: Dict[str, Any], path: Union[str, List[str]], default: Any = None
-) -> Any:
-    keys = path.split(".") if isinstance(path, str) else path
-    current = d
-    for key in keys:
-        if isinstance(current, dict) and key in current:
-            current = current[key]
-        else:
-            return default
-    return current
+if __name__ == '__main__':
+    data_stream = ['test', 123, None, 'data', 4.5]
+    final_output = main_loop(data_stream)
+    print(final_output)
