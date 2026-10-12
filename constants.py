@@ -1,24 +1,25 @@
-from typing import Final, Any, Dict
+import os
+from typing import Final
 
-# Data handling thresholds and constraints
-DEFAULT_CHUNK_SIZE: Final[int] = 1024
-MAX_RETRY_ATTEMPTS: Final[int] = 3
-TIMEOUT_SECONDS: Final[float] = 30.0
+# Application configuration constants
+APP_NAME: Final[str] = "python-utils-98"
+DEFAULT_TIMEOUT: Final[int] = 30
+MAX_RETRIES: Final[int] = 3
 
-# Default data mappings
-EMPTY_MAP: Final[Dict[Any, Any]] = {}
-SUPPORTED_ENCODINGS: Final[tuple] = ('utf-8', 'ascii', 'latin-1')
+# Path settings
+BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR: Final[str] = os.path.join(BASE_DIR, "logs")
 
-# Error and status messages
-ERROR_MSG_INVALID_INPUT: Final[str] = 'Invalid data input format provided'
-ERROR_MSG_TIMEOUT: Final[str] = 'Operation timed out during execution'
+# Environment defaults
+ENV_PREFIX: Final[str] = "PY_UTILS_"
+DEBUG_MODE: Final[bool] = os.getenv(f"{ENV_PREFIX}DEBUG", "False").lower() == "true"
 
-class DataConstants:
-    """Namespace for application-wide configuration constants."""
-    @classmethod
-    def get_supported_encodings(cls) -> tuple:
-        return SUPPORTED_ENCODINGS
+# Validation constraints
+MIN_PASSWORD_LENGTH: Final[int] = 12
+SUPPORTED_EXTENSIONS: Final[tuple[str, ...]] = (".py", ".json", ".yaml")
 
-    @classmethod
-    def get_max_retries(cls) -> int:
-        return MAX_RETRY_ATTEMPTS
+class ExitCodes:
+    SUCCESS: Final[int] = 0
+    ERROR_GENERAL: Final[int] = 1
+    ERROR_INVALID_INPUT: Final[int] = 2
+    ERROR_CONNECTION: Final[int] = 3
