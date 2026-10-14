@@ -1,30 +1,27 @@
 import logging
-from typing import Any, Callable, Optional, TypeVar, Union
-
-T = TypeVar('T')
+from typing import Any, Callable, Dict
 
 logger = logging.getLogger(__name__)
 
-class ExecutionError(Exception):
-    """Base exception for utility operations."""
+class RequestHandler:
+    def __init__(self, registry: Dict[str, Callable]) -> None:
+        self._registry = registry
 
-def safe_execute(func: Callable[..., T], *args: Any, **kwargs: Any) -> Optional[T]:
-    """Execute function with robust error handling for edge cases."""
-    try:
-        if not callable(func):
-            raise TypeError(f"Expected callable, got {type(func).__name__}")
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, AttributeError, KeyError) as e:
-        logger.error("Operational error in %s: %s", func.__name__, e)
-    except Exception as e:
-        logger.critical("Unexpected failure in %s: %s", func.__name__, e)
-    return None
+    def process(self, action: str, data: Any) -> Any:
+        handler = self._registry.get(action)
+        if not handler:
+            logger.error(f"no handler registered for: {action}")
+            raise ValueError(f"unsupported action: {action}")
 
-def validate_input(data: Any, expected_type: type) -> bool:
-    """Validate input structure and type consistency."""
-    if data is None:
-        return False
-    try:
-        return isinstance(data, expected_type)
-    except Exception:
-        return False
+        try:
+            return handler(data)
+        except Exception as e:
+            logger.exception(f"execution failed for {action}: {e}")
+            raise
+
+    @staticmethod
+    def validate_payload(data: Any) -> bool:
+        return isinstance(data, dict) and len(data) > 0
+
+def create_handler(routes: Dict[str, Callable]) -> RequestHandler:
+    return RequestHandler(routes)
