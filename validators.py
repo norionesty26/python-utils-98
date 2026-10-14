@@ -1,26 +1,19 @@
-import logging
+import re
 from typing import Any, Optional
 
-logger = logging.getLogger(__name__)
+def is_email(value: str) -> bool:
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    return bool(re.match(pattern, value))
 
-class ValidationError(Exception):
-    pass
+def is_uuid(value: str) -> bool:
+    pattern = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    return bool(re.match(pattern, value, re.IGNORECASE))
 
-def validate_input(value: Any, expected_type: type, allow_none: bool = False) -> bool:
-    if value is None:
-        if allow_none:
-            return True
-        raise ValidationError('value cannot be none')
-    if not isinstance(value, expected_type):
-        raise ValidationError(f'expected {expected_type.__name__}, got {type(value).__name__}')
-    return True
+def validate_range(value: int, min_val: int, max_val: int) -> bool:
+    return min_val <= value <= max_val
 
-def safe_execute(func: callable, *args: Any, **kwargs: Any) -> Optional[Any]:
-    try:
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, AttributeError) as e:
-        logger.error(f'execution error in {func.__name__}: {e}')
-        return None
-    except Exception as e:
-        logger.critical(f'unhandled exception in {func.__name__}: {e}')
-        raise
+def is_not_empty(value: Optional[str]) -> bool:
+    return bool(value and value.strip())
+
+def sanitize_input(value: str) -> str:
+    return re.sub(r'[^a-zA-Z0-9\s]', '', value)
