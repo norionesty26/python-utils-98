@@ -1,47 +1,22 @@
-import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+class DataProcessor:
+    def __init__(self, data: Optional[List[Dict[str, Any]]] = None):
+        self.data = data or []
 
+    def clean_records(self) -> List[Dict[str, Any]]:
+        return [record for record in self.data if record and isinstance(record, dict)]
 
-class ValidationError(Exception):
-    pass
+    def extract_keys(self, keys: List[str]) -> List[Dict[str, Any]]:
+        return [{k: r[k] for k in keys if k in r} for r in self.clean_records()]
 
+    def sort_by_key(self, key: str, reverse: bool = False) -> List[Dict[str, Any]]:
+        return sorted(self.data, key=lambda x: x.get(key, 0), reverse=reverse)
 
-def validate_item(item: Any) -> Dict[str, Any]:
-    if not isinstance(item, dict):
-        raise ValidationError(f"Expected dict input, got {type(item).__name__}")
+    @staticmethod
+    def validate_schema(data: List[Dict[str, Any]], required_keys: List[str]) -> bool:
+        return all(all(k in record for k in required_keys) for record in data)
 
-    if "id" not in item:
-        raise ValidationError("Missing required field 'id'")
-
-    if "value" not in item:
-        raise ValidationError("Missing required field 'value'")
-
-    if not isinstance(item["value"], (int, float)):
-        raise ValidationError(f"Invalid value type: {type(item['value']).__name__}")
-
-    return item
-
-
-def process_batch(items: List[Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    successful = []
-    failed = []
-
-    for idx, raw_item in enumerate(items):
-        try:
-            validated = validate_item(raw_item)
-            processed_data = {
-                "id": validated["id"],
-                "processed_value": round(float(validated["value"]), 2),
-                "status": "success",
-            }
-            successful.append(processed_data)
-        except ValidationError as err:
-            logger.warning(f"Validation failed at index {idx}: {err}")
-            failed.append({"index": idx, "raw": raw_item, "error": str(err)})
-        except Exception as err:
-            logger.error(f"Unexpected error processing index {idx}: {err}")
-            failed.append({"index": idx, "raw": raw_item, "error": f"Internal error: {err}"})
-
-    return successful, failed
+def process_batch(items: List[Dict[str, Any]], key: str) -> List[Any]:
+    processor = DataProcessor(items)
+    return [item.get(key) for item in processor.clean_records() if key in item]
