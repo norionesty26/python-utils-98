@@ -1,22 +1,31 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 class DataProcessor:
-    def __init__(self, data: Optional[List[Dict[str, Any]]] = None):
-        self.data = data or []
+    """Processor for handling data transformations and filtering."""
 
-    def clean_records(self) -> List[Dict[str, Any]]:
-        return [record for record in self.data if record and isinstance(record, dict)]
+    def __init__(self, items: Optional[List[Any]] = None) -> None:
+        self.items = items or []
 
-    def extract_keys(self, keys: List[str]) -> List[Dict[str, Any]]:
-        return [{k: r[k] for k in keys if k in r} for r in self.clean_records()]
+    def add_item(self, item: Any) -> None:
+        """Append a single item to the internal collection."""
+        self.items.append(item)
 
-    def sort_by_key(self, key: str, reverse: bool = False) -> List[Dict[str, Any]]:
-        return sorted(self.data, key=lambda x: x.get(key, 0), reverse=reverse)
+    def filter_by_type(self, data_type: type) -> List[Any]:
+        """Return list containing only items of specified type."""
+        return [item for item in self.items if isinstance(item, data_type)]
 
-    @staticmethod
-    def validate_schema(data: List[Dict[str, Any]], required_keys: List[str]) -> bool:
-        return all(all(k in record for k in required_keys) for record in data)
+    def get_summary(self) -> dict:
+        """Return a mapping of types to their counts."""
+        summary: dict[str, int] = {}
+        for item in self.items:
+            t_name = type(item).__name__
+            summary[t_name] = summary.get(t_name, 0) + 1
+        return summary
 
-def process_batch(items: List[Dict[str, Any]], key: str) -> List[Any]:
-    processor = DataProcessor(items)
-    return [item.get(key) for item in processor.clean_records() if key in item]
+    def clear(self) -> None:
+        """Empty the internal collection."""
+        self.items.clear()
+
+    def __repr__(self) -> str:
+        """String representation of the processor state."""
+        return f"DataProcessor(count={len(self.items)})"
