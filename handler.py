@@ -1,27 +1,29 @@
 import logging
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-class RequestHandler:
-    def __init__(self, registry: Dict[str, Callable]) -> None:
-        self._registry = registry
+class BaseHandler:
+    def __init__(self, registry: Optional[Dict[str, Callable]] = None):
+        self._registry = registry or {}
 
-    def process(self, action: str, data: Any) -> Any:
-        handler = self._registry.get(action)
-        if not handler:
-            logger.error(f"no handler registered for: {action}")
-            raise ValueError(f"unsupported action: {action}")
+    def register(self, name: str, func: Callable) -> None:
+        self._registry[name] = func
 
+    def execute(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        func = self._registry.get(name)
+        if not func:
+            logger.error(f'handler {name} not found')
+            raise ValueError(f'unknown handler: {name}')
+        return func(*args, **kwargs)
+
+class DataHandler(BaseHandler):
+    def process_payload(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
-            return handler(data)
+            return {k: v for k, v in data.items() if v is not None}
         except Exception as e:
-            logger.exception(f"execution failed for {action}: {e}")
-            raise
+            logger.exception('processing error')
+            raise e
 
-    @staticmethod
-    def validate_payload(data: Any) -> bool:
-        return isinstance(data, dict) and len(data) > 0
-
-def create_handler(routes: Dict[str, Callable]) -> RequestHandler:
-    return RequestHandler(routes)
+def get_handler_instance() -> DataHandler:
+    return DataHandler()
