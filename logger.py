@@ -1,28 +1,42 @@
 import logging
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
+import sys
+from typing import Optional
 
-def get_logger(name: str, log_file: str = "app.log", max_bytes: int = 1048576, backup_count: int = 3) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+    """
+    Creates and configures a standard logger instance.
     
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    Args:
+        name: The name of the logger.
+        level: The logging threshold level.
+        
+    Returns:
+        A configured logging.Logger instance.
+    """
+    logger: logging.Logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-
-    file_handler = RotatingFileHandler(
-        log_file, 
-        maxBytes=max_bytes, 
-        backupCount=backup_count
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
+    if not logger.handlers:
+        handler: logging.StreamHandler = logging.StreamHandler(sys.stdout)
+        formatter: logging.Formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     return logger
+
+class LoggerMixin:
+    """
+    Mixin to provide logging capabilities to classes.
+    """
+    def __init__(self) -> None:
+        self.logger: logging.Logger = get_logger(self.__class__.__name__)
+
+    def log_info(self, message: str) -> None:
+        """Logs an info level message."""
+        self.logger.info(message)
+
+    def log_error(self, message: str, exc_info: bool = False) -> None:
+        """Logs an error level message."""
+        self.logger.error(message, exc_info=exc_info)
