@@ -1,53 +1,58 @@
 # python-utils-98
 
-A collection of lightweight, high-performance Python utilities designed to streamline daily automation and data processing tasks. This toolkit eliminates boilerplate code by providing robust wrappers for common file operations, logging, and concurrency management.
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+`python-utils-98` is a lightweight, zero-dependency Python library designed to streamline common data transformation, file handling, and string manipulation tasks. It provides a cohesive collection of battle-tested helper functions to reduce boilerplate code across modern Python applications.
 
 ## Features
 
-*   **FileStream API:** Simplified context managers for handling large file I/O operations without memory overflows.
-*   **Safe-Thread Executor:** A clean wrapper around `concurrent.futures` with built-in exception handling and result logging.
-*   **Config Loader:** A unified interface to load, parse, and validate environment variables and JSON/YAML configuration files.
-*   **Time-it Decorator:** A decorator suite for precision profiling and benchmarking of individual functions or class methods.
+* **Smart Dictionary Merging**: Perform deep merges on nested dictionaries with configurable collision handling.
+* **Safe File Operations**: Write files atomically to prevent partial writes, with automated directory creation and SHA-256 checksum validation.
+* **String Case Transformer**: Convert text effortlessly between `camelCase`, `snake_case`, `PascalCase`, and `kebab-case`.
+* **Execution Profiling**: Measure block execution time with microsecond accuracy using lightweight context managers and decorators.
 
 ## Installation
 
-Install the package directly from PyPI:
+Install the package via `pip`:
 
 ```bash
 pip install python-utils-98
 ```
 
-For development mode, clone the repository and install dependencies:
+Alternatively, install directly from source:
 
 ```bash
 git clone https://github.com/Developer/python-utils-98.git
 cd python-utils-98
-pip install -r requirements.txt
+pip install .
 ```
 
-## Usage
+## Quick Start
 
-Easily profile your code or manage file operations with minimal setup:
+Here is a quick example showing dictionary merging and string formatting in action:
 
 ```python
-from pyutils98 import timer, FileStream
+from python_utils_98 import deep_merge, to_snake_case, SafeWriter
 
-# Benchmark any function with a single decorator
-@timer
-def heavy_computation():
-    return sum(i * i for i in range(1000000))
+# Deep merge nested dictionaries
+base_config = {"db": {"host": "localhost", "port": 5432}}
+override_config = {"db": {"port": 5433, "user": "admin"}}
 
-# Safe file writing without manual closing
-with FileStream("data.txt", mode="w") as f:
-    f.write("System log entry")
+final_config = deep_merge(base_config, override_config)
+print(final_config)
+# Output: {'db': {'host': 'localhost', 'port': 5433, 'user': 'admin'}}
+
+# Normalize object keys
+raw_key = "userProfileSettings"
+clean_key = to_snake_case(raw_key)
+print(clean_key)
+# Output: 'user_profile_settings'
+
+# Safe atomic file write
+with SafeWriter("config.json") as writer:
+    writer.write('{"status": "ok"}')
 ```
-
-## Contributing
-
-Contributions are welcome! Please open an issue to discuss proposed changes or submit a pull request with unit tests covering your new functionality.
 
 ## License
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
