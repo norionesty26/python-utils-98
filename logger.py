@@ -1,42 +1,24 @@
 import logging
-import sys
-from typing import Optional
+from functools import lru_cache
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    """
-    Creates and configures a standard logger instance.
-    
-    Args:
-        name: The name of the logger.
-        level: The logging threshold level.
-        
-    Returns:
-        A configured logging.Logger instance.
-    """
-    logger: logging.Logger = logging.getLogger(name)
-    logger.setLevel(level)
-
-    if not logger.handlers:
-        handler: logging.StreamHandler = logging.StreamHandler(sys.stdout)
-        formatter: logging.Formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+class PerformanceLogger:
+    def __init__(self, name: str = 'python-utils-98') -> None:
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        self.logger.addHandler(handler)
 
-    return logger
+    @lru_cache(maxsize=128)
+    def get_formatted_message(self, message: str) -> str:
+        return f'[{self.logger.name}] {message}'
 
-class LoggerMixin:
-    """
-    Mixin to provide logging capabilities to classes.
-    """
-    def __init__(self) -> None:
-        self.logger: logging.Logger = get_logger(self.__class__.__name__)
+    def info(self, message: str) -> None:
+        self.logger.info(self.get_formatted_message(message))
 
-    def log_info(self, message: str) -> None:
-        """Logs an info level message."""
-        self.logger.info(message)
+    def error(self, message: str) -> None:
+        self.logger.error(self.get_formatted_message(message))
 
-    def log_error(self, message: str, exc_info: bool = False) -> None:
-        """Logs an error level message."""
-        self.logger.error(message, exc_info=exc_info)
+def get_logger(name: str = 'python-utils-98') -> PerformanceLogger:
+    return PerformanceLogger(name)
