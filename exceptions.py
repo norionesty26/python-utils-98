@@ -1,51 +1,32 @@
-from typing import Any, Optional
+class BaseUtilsError(Exception):
+    """Base exception for the library."""
 
 
-class UtilsBaseError(Exception):
-    """Base exception for all python-utils-98 errors."""
-
-    def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
-        super().__init__(message)
-        self.message = message
-        self.details = details or {}
-
-    def __str__(self) -> str:
-        if self.details:
-            details_str = ", ".join(f"{k}={v}" for k, v in self.details.items())
-            return f"{self.message} ({details_str})"
-        return self.message
+class ConfigurationError(BaseUtilsError):
+    """Raised when configuration is invalid."""
 
 
-class ValidationError(UtilsBaseError):
-    """Raised when data validation fails."""
+class ValidationError(BaseUtilsError):
+    """Raised when input validation fails."""
 
 
-class ConfigurationError(UtilsBaseError):
-    """Raised when configuration loading or parsing fails."""
+class ProcessingError(BaseUtilsError):
+    """Raised during data processing failures."""
 
 
-class ProcessingError(UtilsBaseError):
-    """Raised when a processing operation fails."""
-
-
-class ResourceNotFoundError(UtilsBaseError):
+class ResourceNotFoundError(BaseUtilsError):
     """Raised when a requested resource is missing."""
 
 
-def raise_for_condition(
-    condition: bool,
-    exception_cls: type[UtilsBaseError],
-    message: str,
-    **details: Any,
-) -> None:
-    if condition:
-        raise exception_cls(message, details=details if details else None)
+class TimeoutError(BaseUtilsError):
+    """Raised on operation timeout."""
 
 
-def format_exception_chain(exc: BaseException) -> str:
-    chain = []
-    current: Optional[BaseException] = exc
-    while current:
-        chain.append(f"{type(current).__name__}: {current}")
-        current = current.__cause__ or current.__context__
-    return " -> ".join(chain)
+class InitializationError(BaseUtilsError):
+    """Raised when component fails to initialize."""
+
+
+def handle_exception(exc: Exception) -> None:
+    if not isinstance(exc, BaseUtilsError):
+        raise BaseUtilsError(f"Unexpected error: {exc}") from exc
+    raise exc
