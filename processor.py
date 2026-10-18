@@ -1,31 +1,31 @@
-from typing import Any, List, Optional
+import functools
+from typing import Callable, Any, Dict
 
 class DataProcessor:
-    """Processor for handling data transformations and filtering."""
+    def __init__(self) -> None:
+        self._cache: Dict[tuple, Any] = {}
 
-    def __init__(self, items: Optional[List[Any]] = None) -> None:
-        self.items = items or []
+    @staticmethod
+    def memoize(func: Callable) -> Callable:
+        cache = {}
 
-    def add_item(self, item: Any) -> None:
-        """Append a single item to the internal collection."""
-        self.items.append(item)
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            key = (args, tuple(sorted(kwargs.items())))
+            if key not in cache:
+                cache[key] = func(*args, **kwargs)
+            return cache[key]
+        return wrapper
 
-    def filter_by_type(self, data_type: type) -> List[Any]:
-        """Return list containing only items of specified type."""
-        return [item for item in self.items if isinstance(item, data_type)]
+    def process_batch(self, data: list) -> list:
+        return [self._heavy_computation(item) for item in data]
 
-    def get_summary(self) -> dict:
-        """Return a mapping of types to their counts."""
-        summary: dict[str, int] = {}
-        for item in self.items:
-            t_name = type(item).__name__
-            summary[t_name] = summary.get(t_name, 0) + 1
-        return summary
+    @memoize
+    def _heavy_computation(self, n: int) -> int:
+        result = 0
+        for i in range(n):
+            result += i * i
+        return result
 
-    def clear(self) -> None:
-        """Empty the internal collection."""
-        self.items.clear()
-
-    def __repr__(self) -> str:
-        """String representation of the processor state."""
-        return f"DataProcessor(count={len(self.items)})"
+    def optimize_sequence(self, sequence: list) -> list:
+        return sorted(list(set(sequence)), key=lambda x: x)
