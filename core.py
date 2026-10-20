@@ -1,25 +1,39 @@
-import sys
+import functools
+import time
+from typing import Callable, Any, Dict
 
-def validate_input(data):
-    if not isinstance(data, (str, int)):
-        raise ValueError(f'Invalid input type: {type(data).__name__}')
-    return True
+CACHE_LIMIT = 128
 
-def process_item(item):
-    return f'Processed: {item}'
+class PerformanceOptimizer:
+    @staticmethod
+    def memoize(func: Callable) -> Callable:
+        cache: Dict[tuple, Any] = {}
 
-def main_loop(items):
-    results = []
-    for item in items:
-        try:
-            validate_input(item)
-            results.append(process_item(item))
-        except (ValueError, TypeError) as e:
-            print(f'Skipping invalid item {item}: {e}', file=sys.stderr)
-            continue
-    return results
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            key = (args, frozenset(kwargs.items()))
+            if key not in cache:
+                if len(cache) >= CACHE_LIMIT:
+                    cache.clear()
+                cache[key] = func(*args, **kwargs)
+            return cache[key]
+        return wrapper
 
-if __name__ == '__main__':
-    data_stream = ['test', 123, None, 'data', 4.5]
-    final_output = main_loop(data_stream)
-    print(final_output)
+    @staticmethod
+    def time_execution(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            end = time.perf_counter()
+            print(f'{func.__name__} execution time: {end - start:.6f}s')
+            return result
+        return wrapper
+
+    @staticmethod
+    def batch_process(data: list, size: int):
+        for i in range(0, len(data), size):
+            yield data[i:i + size]
+
+def fast_hash(data: str) -> int:
+    return hash(data)
