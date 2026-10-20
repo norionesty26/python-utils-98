@@ -1,29 +1,31 @@
-import json
 import os
-from typing import Any, Dict
+from typing import Any, Optional
 
-class ConfigLoader:
-    def __init__(self, defaults: Dict[str, Any] = None):
-        self.config = defaults or {}
+class ConfigError(Exception):
+    pass
 
-    def load_from_file(self, filepath: str) -> None:
-        if not os.path.exists(filepath):
-            return
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            self.config.update(data)
+def get_env_variable(key: str, default: Optional[Any] = None) -> Any:
+    try:
+        return os.environ[key]
+    except KeyError:
+        if default is not None:
+            return default
+        raise ConfigError(f"missing required environment variable: {key}")
 
-    def load_from_env(self, prefix: str = 'APP_') -> None:
-        for key, value in os.environ.items():
-            if key.startswith(prefix):
-                clean_key = key[len(prefix):].lower()
-                self.config[clean_key] = value
+def load_config(keys: list[str]) -> dict[str, Any]:
+    config = {}
+    for key in keys:
+        try:
+            config[key] = get_env_variable(key)
+        except ConfigError as e:
+            config[key] = None
+    return config
 
-    def get(self, key: str, default: Any = None) -> Any:
-        return self.config.get(key, default)
-
-    def __getitem__(self, key: str) -> Any:
-        return self.config[key]
-
-    def __repr__(self) -> str:
-        return f"ConfigLoader({self.config})"
+def validate_port(port: Any) -> int:
+    try:
+        port_int = int(port)
+        if not (1 <= port_int <= 65535):
+            raise ValueError
+        return port_int
+    except (TypeError, ValueError):
+        raise ConfigError(f"invalid port number: {port}")
