@@ -1,18 +1,28 @@
-from functools import lru_cache
-import re
+class ValidationError(Exception):
+    pass
 
-@lru_cache(maxsize=1024)
-def is_valid_email(email: str) -> bool:
-    if not email or '@' not in email:
+def validate_input(data: dict, required_keys: list):
+    if not isinstance(data, dict):
+        raise ValidationError('Input must be a dictionary')
+    
+    for key in required_keys:
+        if key not in data:
+            raise ValidationError(f'Missing required field: {key}')
+
+def process_data(data: dict, schema: list):
+    try:
+        validate_input(data, schema)
+        return True
+    except ValidationError as e:
+        print(f'Validation failed: {e}')
         return False
-    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-    return bool(re.match(pattern, email))
 
-@lru_cache(maxsize=512)
-def sanitize_input(data: str) -> str:
-    if not isinstance(data, str):
-        return str(data)
-    return data.strip().replace('<', '&lt;').replace('>', '&gt;')
-
-def batch_validate(items: list, validator: callable) -> list:
-    return [item for item in items if validator(item)]
+if __name__ == '__main__':
+    data_stream = [{'id': 1}, {'name': 'test'}]
+    required = ['id', 'name']
+    
+    for item in data_stream:
+        if process_data(item, required):
+            print('Processing item')
+        else:
+            print('Skipping invalid item')
