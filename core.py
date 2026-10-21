@@ -1,39 +1,30 @@
-import functools
-import time
-from typing import Callable, Any, Dict
+from typing import Any, Iterable, TypeVar, List
+import itertools
 
-CACHE_LIMIT = 128
+T = TypeVar('T')
 
-class PerformanceOptimizer:
-    @staticmethod
-    def memoize(func: Callable) -> Callable:
-        cache: Dict[tuple, Any] = {}
+def chunk_list(data: Iterable[T], size: int) -> Iterable[List[T]]:
+    iterator = iter(data)
+    for first in iterator:
+        yield [first] + list(itertools.islice(iterator, size - 1))
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            key = (args, frozenset(kwargs.items()))
-            if key not in cache:
-                if len(cache) >= CACHE_LIMIT:
-                    cache.clear()
-                cache[key] = func(*args, **kwargs)
-            return cache[key]
-        return wrapper
+def flatten(nested_list: Iterable[Iterable[T]]) -> List[T]:
+    return [item for sublist in nested_list for item in sublist]
 
-    @staticmethod
-    def time_execution(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            start = time.perf_counter()
-            result = func(*args, **kwargs)
-            end = time.perf_counter()
-            print(f'{func.__name__} execution time: {end - start:.6f}s')
-            return result
-        return wrapper
+def get_deep(data: dict, keys: str, default: Any = None) -> Any:
+    curr = data
+    try:
+        for key in keys.split('.'):
+            curr = curr[key]
+        return curr
+    except (KeyError, TypeError):
+        return default
 
-    @staticmethod
-    def batch_process(data: list, size: int):
-        for i in range(0, len(data), size):
-            yield data[i:i + size]
+def distinct(data: Iterable[T]) -> List[T]:
+    return list(dict.fromkeys(data))
 
-def fast_hash(data: str) -> int:
-    return hash(data)
+def dict_filter(data: dict, keys: Iterable[str]) -> dict:
+    return {k: v for k, v in data.items() if k in keys}
+
+def coalesce(*args: Any) -> Any:
+    return next((arg for arg in args if arg is not None), None)
