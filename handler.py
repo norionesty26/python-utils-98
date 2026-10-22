@@ -1,11 +1,14 @@
 import time
 import functools
-from typing import Callable, Any, Type
+from typing import Callable, Any, Type, Tuple
 
-def retry(exceptions: tuple[Type[Exception], ...], tries: int = 3, delay: float = 1.0, backoff: float = 2.0):
-    def decorator(func: Callable):
+def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
+          tries: int = 3, 
+          delay: float = 1.0, 
+          backoff: float = 2.0) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             mtries, mdelay = tries, delay
             while mtries > 1:
                 try:
@@ -20,5 +23,4 @@ def retry(exceptions: tuple[Type[Exception], ...], tries: int = 3, delay: float 
 
 @retry(exceptions=(ConnectionError, TimeoutError), tries=3, delay=2)
 def fetch_data(url: str) -> str:
-    # Simulate network operation
-    return f"response from {url}"
+    return "success"
