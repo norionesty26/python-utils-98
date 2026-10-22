@@ -1,26 +1,39 @@
-import time
-import functools
-from typing import Callable, Any, Type, Tuple
+import logging
+from typing import Any, Callable, Optional
 
-def retry(exceptions: Tuple[Type[Exception], ...] = (Exception,), 
-          tries: int = 3, 
-          delay: float = 1.0, 
-          backoff: float = 2.0) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions:
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+logger = logging.getLogger(__name__)
 
-@retry(exceptions=(ConnectionError, TimeoutError), tries=3, delay=2)
-def fetch_data(url: str) -> str:
-    return "success"
+class ProcessingError(Exception):
+    """Base exception for data processing operations."""
+
+def safe_execute(func: Callable, *args: Any, **kwargs: Any) -> Optional[Any]:
+    """Execute function with robust error handling for edge cases."""
+    try:
+        if not callable(func):
+            raise ValueError("Provided object is not callable")
+        return func(*args, **kwargs)
+    except (TypeError, ValueError) as e:
+        logger.error(f"Invalid input parameters: {e}")
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception as e:
+        logger.critical(f"Unexpected system failure: {e}")
+    return None
+
+def validate_response(data: Any) -> bool:
+    """Validate edge case response structures."""
+    if data is None:
+        return False
+    if isinstance(data, (dict, list)) and not data:
+        return False
+    return True
+
+def batch_process(items: list, processor: Callable) -> list:
+    """Process collection with per-item fault tolerance."""
+    results = []
+    for item in items or []:
+        try:
+            results.append(processor(item))
+        except Exception:
+            continue
+    return results
