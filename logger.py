@@ -1,24 +1,33 @@
 import logging
-from functools import lru_cache
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Optional
 
-class PerformanceLogger:
-    def __init__(self, name: str = 'python-utils-98') -> None:
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+def setup_logger(
+    name: str,
+    log_file: str = "app.log",
+    level: int = logging.INFO,
+    max_bytes: int = 10 * 1024 * 1024,
+    backup_count: int = 5
+) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    if not logger.handlers:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        handler = RotatingFileHandler(
+            log_path,
+            maxBytes=max_bytes,
+            backupCount=backup_count,
+            encoding="utf-8"
+        )
+        
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        logger.addHandler(handler)
 
-    @lru_cache(maxsize=128)
-    def get_formatted_message(self, message: str) -> str:
-        return f'[{self.logger.name}] {message}'
-
-    def info(self, message: str) -> None:
-        self.logger.info(self.get_formatted_message(message))
-
-    def error(self, message: str) -> None:
-        self.logger.error(self.get_formatted_message(message))
-
-def get_logger(name: str = 'python-utils-98') -> PerformanceLogger:
-    return PerformanceLogger(name)
+    return logger
