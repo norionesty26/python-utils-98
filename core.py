@@ -1,30 +1,30 @@
-from typing import Any, Iterable, TypeVar, List
-import itertools
+import functools
+from itertools import islice
+from typing import Callable, Generator, Iterable, List, Sequence, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
+R = TypeVar("R")
 
-def chunk_list(data: Iterable[T], size: int) -> Iterable[List[T]]:
-    iterator = iter(data)
-    for first in iterator:
-        yield [first] + list(itertools.islice(iterator, size - 1))
 
-def flatten(nested_list: Iterable[Iterable[T]]) -> List[T]:
-    return [item for sublist in nested_list for item in sublist]
+class CorePipeline:
+    __slots__ = ("_batch_size", "_cache_size")
 
-def get_deep(data: dict, keys: str, default: Any = None) -> Any:
-    curr = data
-    try:
-        for key in keys.split('.'):
-            curr = curr[key]
-        return curr
-    except (KeyError, TypeError):
-        return default
+    def __init__(self, batch_size: int = 1000, cache_size: int = 1024) -> None:
+        self._batch_size = batch_size
+        self._cache_size = cache_size
 
-def distinct(data: Iterable[T]) -> List[T]:
-    return list(dict.fromkeys(data))
+    def chunk_stream(self, iterable: Iterable[T]) -> Generator[List[T], None, None]:
+        iterator = iter(iterable)
+        while chunk := list(islice(iterator, self._batch_size)):
+            yield chunk
 
-def dict_filter(data: dict, keys: Iterable[str]) -> dict:
-    return {k: v for k, v in data.items() if k in keys}
+    def fast_map(self, func: Callable[[T], R], items: Iterable[T]) -> List[R]:
+        cached_func = functools.lru_cache(maxsize=self._cache_size)(func)
+        return [cached_func(item) for item in items]
 
-def coalesce(*args: Any) -> Any:
-    return next((arg for arg in args if arg is not None), None)
+    def process_in_batches(
+        self, func: Callable[[T], R], items: Sequence[T]
+    ) -> Generator[List[R], None, None]:
+        cached_func = functools.lru_cache(maxsize=self._cache_size)(func)
+        for chunk in self.chunk_stream(items):
+            yield [cached_func(item) for item in chunk]
