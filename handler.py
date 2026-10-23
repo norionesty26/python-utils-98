@@ -1,40 +1,24 @@
-import logging
-from typing import Any, Callable, Optional
+import time
+import functools
+from typing import Callable, Any, Type
 
-logger = logging.getLogger(__name__)
+def retry(exceptions: tuple[Type[Exception], ...], max_retries: int = 3, delay: float = 1.0):
+    def decorator(func: Callable):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            last_exception = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    time.sleep(delay * (2 ** attempt))
+            raise last_exception
+        return wrapper
+    return decorator
 
-class ProcessingError(Exception):
-    """Custom exception for handler operations."""
-    pass
-
-def safe_execute(func: Callable, *args: Any, **kwargs: Any) -> Optional[Any]:
-    """Executes a callable with comprehensive error handling."""
-    try:
-        return func(*args, **kwargs)
-    except TypeError as e:
-        logger.error(f"Invalid argument type provided: {e}")
-    except ValueError as e:
-        logger.error(f"Invalid value encountered: {e}")
-    except KeyError as e:
-        logger.error(f"Missing required key: {e}")
-    except Exception as e:
-        logger.exception(f"Unexpected system failure: {e}")
-    return None
-
-def validate_input(data: Any) -> bool:
-    """Validates input presence and structure."""
-    if data is None:
-        return False
-    if isinstance(data, (dict, list, str)) and not data:
-        return False
-    return True
-
-def process_with_validation(data: Any, processor: Callable) -> Any:
-    """Wraps processing logic with safety checks."""
-    if not validate_input(data):
-        raise ProcessingError("Invalid input data received")
-    
-    result = safe_execute(processor, data)
-    if result is None:
-        raise ProcessingError("Processor execution failed")
-    return result
+class NetworkHandler:
+    @retry((ConnectionError, TimeoutError), max_retries=3, delay=0.5)
+    def request(self, url: str) -> str:
+        # simulate network operation
+        return f"response from {url}"
