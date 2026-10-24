@@ -1,30 +1,29 @@
 import functools
-from itertools import islice
-from typing import Callable, Generator, Iterable, List, Sequence, TypeVar
+from typing import Callable, Any, Dict
 
-T = TypeVar("T")
-R = TypeVar("R")
+class PerformanceCache:
+    def __init__(self, max_size: int = 128):
+        self.cache: Dict[tuple, Any] = {}
+        self.max_size = max_size
 
+    def __call__(self, func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            key = (func.__name__, args, frozenset(kwargs.items()))
+            if key not in self.cache:
+                if len(self.cache) >= self.max_size:
+                    self.cache.pop(next(iter(self.cache)))
+                self.cache[key] = func(*args, **kwargs)
+            return self.cache[key]
+        return wrapper
 
-class CorePipeline:
-    __slots__ = ("_batch_size", "_cache_size")
+def batch_process(items: list, chunk_size: int = 100):
+    for i in range(0, len(items), chunk_size):
+        yield items[i:i + chunk_size]
 
-    def __init__(self, batch_size: int = 1000, cache_size: int = 1024) -> None:
-        self._batch_size = batch_size
-        self._cache_size = cache_size
+def fast_map(func: Callable, data: list) -> list:
+    return [func(x) for x in data]
 
-    def chunk_stream(self, iterable: Iterable[T]) -> Generator[List[T], None, None]:
-        iterator = iter(iterable)
-        while chunk := list(islice(iterator, self._batch_size)):
-            yield chunk
-
-    def fast_map(self, func: Callable[[T], R], items: Iterable[T]) -> List[R]:
-        cached_func = functools.lru_cache(maxsize=self._cache_size)(func)
-        return [cached_func(item) for item in items]
-
-    def process_in_batches(
-        self, func: Callable[[T], R], items: Sequence[T]
-    ) -> Generator[List[R], None, None]:
-        cached_func = functools.lru_cache(maxsize=self._cache_size)(func)
-        for chunk in self.chunk_stream(items):
-            yield [cached_func(item) for item in chunk]
+def optimized_compute(data: list) -> float:
+    # Minimal overhead aggregation
+    return sum(map(float, data)) / len(data) if data else 0.0
