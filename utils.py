@@ -1,34 +1,38 @@
-import json
 import os
-from typing import Any, Dict, Optional
+import shutil
+from typing import Union, List
+from pathlib import Path
 
-def read_json(filepath: str) -> Dict[str, Any]:
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        return json.load(f)
+def ensure_directory(path: Union[str, Path]) -> Path:
+    dir_path = Path(path)
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
 
-def write_json(filepath: str, data: Dict[str, Any]) -> None:
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
+def clean_directory(path: Union[str, Path]) -> None:
+    target = Path(path)
+    if target.exists():
+        for item in target.iterdir():
+            if item.is_file() or item.is_symlink():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
 
-def ensure_dir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path)
+def get_file_list(directory: Union[str, Path], extension: str = "*") -> List[Path]:
+    return list(Path(directory).glob(f"*.{extension.lstrip('.')}"))
 
-def get_env_variable(key: str, default: Optional[str] = None) -> Optional[str]:
-    return os.environ.get(key, default)
+def safe_remove(path: Union[str, Path]) -> bool:
+    try:
+        target = Path(path)
+        if target.is_file() or target.is_symlink():
+            target.unlink()
+            return True
+        return False
+    except OSError:
+        return False
 
-def chunk_list(data: list, size: int):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
-
-def flatten_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+def format_byte_size(size: int, suffix: str = 'B') -> str:
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti']:
+        if size < 1024:
+            return f"{size:.2f} {unit}{suffix}"
+        size /= 1024
+    return f"{size:.2f} Pi{suffix}"
