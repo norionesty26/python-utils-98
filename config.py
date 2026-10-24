@@ -1,31 +1,29 @@
 import os
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
-class ConfigError(Exception):
+class ConfigurationError(Exception):
     pass
 
-def get_env_variable(key: str, default: Optional[Any] = None) -> Any:
+def load_config(path: str) -> Dict[str, Any]:
+    if not path or not isinstance(path, str):
+        raise ConfigurationError("invalid configuration file path")
+    
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"config file not found: {path}")
+        
     try:
-        return os.environ[key]
-    except KeyError:
+        with open(path, 'r') as f:
+            data = f.read()
+            if not data.strip():
+                return {}
+            return dict(line.split('=') for line in data.splitlines() if '=' in line)
+    except (IOError, ValueError) as e:
+        raise ConfigurationError(f"error parsing configuration: {e}")
+
+def get_env_variable(key: str, default: Optional[str] = None) -> str:
+    value = os.getenv(key)
+    if value is None:
         if default is not None:
             return default
-        raise ConfigError(f"missing required environment variable: {key}")
-
-def load_config(keys: list[str]) -> dict[str, Any]:
-    config = {}
-    for key in keys:
-        try:
-            config[key] = get_env_variable(key)
-        except ConfigError as e:
-            config[key] = None
-    return config
-
-def validate_port(port: Any) -> int:
-    try:
-        port_int = int(port)
-        if not (1 <= port_int <= 65535):
-            raise ValueError
-        return port_int
-    except (TypeError, ValueError):
-        raise ConfigError(f"invalid port number: {port}")
+        raise ConfigurationError(f"missing required environment variable: {key}")
+    return value
