@@ -1,24 +1,31 @@
-import time
-import functools
-from typing import Callable, Any, Type
+import logging
+from typing import Any, Callable, Dict, Optional
 
-def retry(exceptions: tuple[Type[Exception], ...], max_retries: int = 3, delay: float = 1.0):
-    def decorator(func: Callable):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            last_exception = None
-            for attempt in range(max_retries):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    time.sleep(delay * (2 ** attempt))
-            raise last_exception
-        return wrapper
-    return decorator
+logger = logging.getLogger(__name__)
 
-class NetworkHandler:
-    @retry((ConnectionError, TimeoutError), max_retries=3, delay=0.5)
-    def request(self, url: str) -> str:
-        # simulate network operation
-        return f"response from {url}"
+class BaseHandler:
+    def __init__(self, settings: Optional[Dict[str, Any]] = None):
+        self.settings = settings or {}
+
+    def execute(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Execution error: {e}")
+            raise
+
+class DataHandler(BaseHandler):
+    def process(self, data: Any) -> Any:
+        if not data:
+            raise ValueError("Empty input data")
+        return self.execute(self._transform, data)
+
+    def _transform(self, data: Any) -> Any:
+        return str(data).strip().lower()
+
+class ResultHandler(BaseHandler):
+    def save(self, data: Any) -> bool:
+        if self.settings.get("readonly"):
+            return False
+        logger.info("Saving data to persistence layer")
+        return True
