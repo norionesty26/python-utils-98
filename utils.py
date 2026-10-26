@@ -1,30 +1,36 @@
-import json
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Generator, Iterable, List, TypeVar
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r') as f:
-        return json.load(f)
+T = TypeVar("T")
 
-def save_json(filepath: str, data: Dict[str, Any]) -> None:
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=4)
 
-def get_env(key: str, default: Optional[str] = None) -> Optional[str]:
-    return os.environ.get(key, default)
-
-def chunk_list(data: list, size: int):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
-
-def flatten_dict(d: dict, parent_key: str = '', sep: str = '_') -> dict:
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
+def deep_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merges dict2 into dict1 and returns a new dictionary."""
+    result = dict1.copy()
+    for key, value in dict2.items():
+        if isinstance(value, dict) and key in result and isinstance(result[key], dict):
+            result[key] = deep_merge(result[key], value)
         else:
-            items.append((new_key, v))
-    return dict(items)
+            result[key] = value
+    return result
+
+
+def chunk_iterable(iterable: Iterable[T], size: int) -> Generator[List[T], None, None]:
+    """Yield successive n-sized chunks from an iterable."""
+    if size <= 0:
+        raise ValueError("Chunk size must be greater than zero.")
+    chunk: List[T] = []
+    for item in iterable:
+        chunk.append(item)
+        if len(chunk) == size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
+
+
+def safe_cast(val: Any, to_type: type, default: Any = None) -> Any:
+    """Safely casts a value to a specified type, returning default on failure."""
+    try:
+        return to_type(val)
+    except (ValueError, TypeError):
+        return default
