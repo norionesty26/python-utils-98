@@ -1,31 +1,33 @@
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
-class BaseHandler:
-    def __init__(self, settings: Optional[Dict[str, Any]] = None):
-        self.settings = settings or {}
+class ProcessingError(Exception):
+    pass
 
-    def execute(self, func: Callable, *args: Any, **kwargs: Any) -> Any:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Execution error: {e}")
-            raise
+def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
+    try:
+        return func(*args, **kwargs)
+    except (ValueError, TypeError, KeyError) as e:
+        logger.error(f"Data validation error: {e}")
+        return default
+    except Exception as e:
+        logger.critical(f"Unexpected system failure: {e}", exc_info=True)
+        raise ProcessingError(f"Critical failure during {func.__name__}") from e
 
-class DataHandler(BaseHandler):
-    def process(self, data: Any) -> Any:
-        if not data:
-            raise ValueError("Empty input data")
-        return self.execute(self._transform, data)
+def validate_input(data: Optional[dict]) -> dict:
+    if not isinstance(data, dict):
+        raise ValueError("Input must be a dictionary")
+    return data
 
-    def _transform(self, data: Any) -> Any:
-        return str(data).strip().lower()
-
-class ResultHandler(BaseHandler):
-    def save(self, data: Any) -> bool:
-        if self.settings.get("readonly"):
-            return False
-        logger.info("Saving data to persistence layer")
-        return True
+def process_data(data: Any) -> Any:
+    try:
+        clean_data = validate_input(data)
+        return {k: v for k, v in clean_data.items() if v is not None}
+    except (ValueError, AttributeError) as e:
+        logger.warning(f"Invalid input format: {e}")
+        return {}
+    except Exception as e:
+        logger.error(f"Processing error: {e}")
+        raise
