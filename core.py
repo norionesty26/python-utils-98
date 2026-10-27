@@ -1,29 +1,32 @@
 import functools
-from typing import Callable, Any, Dict
+import random
+import time
+from typing import Any, Callable, Tuple, Type
 
-class PerformanceCache:
-    def __init__(self, max_size: int = 128):
-        self.cache: Dict[tuple, Any] = {}
-        self.max_size = max_size
 
-    def __call__(self, func: Callable) -> Callable:
+def retry(
+    max_retries: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    jitter: bool = True,
+    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            key = (func.__name__, args, frozenset(kwargs.items()))
-            if key not in self.cache:
-                if len(self.cache) >= self.max_size:
-                    self.cache.pop(next(iter(self.cache)))
-                self.cache[key] = func(*args, **kwargs)
-            return self.cache[key]
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            current_delay = delay
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as err:
+                    if attempt == max_retries:
+                        raise err
+                    sleep_time = current_delay
+                    if jitter:
+                        sleep_time += random.uniform(0, current_delay * 0.1)
+                    time.sleep(sleep_time)
+                    current_delay *= backoff
+
         return wrapper
 
-def batch_process(items: list, chunk_size: int = 100):
-    for i in range(0, len(items), chunk_size):
-        yield items[i:i + chunk_size]
-
-def fast_map(func: Callable, data: list) -> list:
-    return [func(x) for x in data]
-
-def optimized_compute(data: list) -> float:
-    # Minimal overhead aggregation
-    return sum(map(float, data)) / len(data) if data else 0.0
+    return decorator
