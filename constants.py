@@ -6,24 +6,21 @@ APP_NAME: Final[str] = "python-utils-98"
 DEFAULT_TIMEOUT: Final[int] = 30
 MAX_RETRIES: Final[int] = 3
 
-# Environment configuration
-ENV: Final[str] = os.getenv("APP_ENV", "production")
-DEBUG: Final[bool] = os.getenv("DEBUG", "false").lower() == "true"
-
-# Path definitions
+# Directory and path defaults
 BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR: Final[str] = os.path.join(BASE_DIR, "logs")
+TEMP_DIR: Final[str] = os.path.join(BASE_DIR, "temp")
 
-# Default headers
-DEFAULT_HEADERS: Final[dict[str, str]] = {
-    "Content-Type": "application/json",
-    "User-Agent": f"{APP_NAME}/1.0"
-}
+# Content type and encoding definitions
+UTF_8: Final[str] = "utf-8"
+JSON_CONTENT_TYPE: Final[str] = "application/json"
 
 # Validation constraints
 MIN_PASSWORD_LENGTH: Final[int] = 12
-ALLOWED_EXTENSIONS: Final[set[str]] = {".json", ".csv", ".yaml"}
+ALLOWED_EXTENSIONS: Final[set[str]] = {".txt", ".csv", ".json", ".log"}
 
-# Error messages
-ERR_TIMEOUT: Final[str] = "operation timed out"
-ERR_AUTH: Final[str] = "authentication failed"
+def get_environment_config() -> dict[str, str]:
+    return {
+        "env": os.getenv("APP_ENV", "development"),
+        "debug": os.getenv("APP_DEBUG", "false"),
+    }
