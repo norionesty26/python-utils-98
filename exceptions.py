@@ -3,15 +3,15 @@ class BaseUtilsError(Exception):
 
 
 class ConfigurationError(BaseUtilsError):
-    """Raised when configuration parameters are invalid."""
+    """Raised for invalid library configurations."""
 
 
 class ValidationError(BaseUtilsError):
-    """Raised when input validation fails."""
+    """Raised when data validation fails."""
 
 
 class ProcessingError(BaseUtilsError):
-    """Raised during internal data transformation steps."""
+    """Raised during core utility operations."""
 
 
 class ResourceNotFoundError(BaseUtilsError):
@@ -19,4 +19,4 @@ class ResourceNotFoundError(BaseUtilsError):
 
 
 class InitializationError(BaseUtilsError):
-    """Raised during component startup failures."""
+    """Raised when component initialization fails."""
