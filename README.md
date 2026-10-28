@@ -1,58 +1,53 @@
 # python-utils-98
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+A robust collection of high-performance utility functions designed to streamline daily Python development tasks. This library simplifies complex boilerplate code into efficient, clean, and reusable components.
 
-`python-utils-98` is a lightweight, zero-dependency Python library designed to streamline common data transformation, file handling, and string manipulation tasks. It provides a cohesive collection of battle-tested helper functions to reduce boilerplate code across modern Python applications.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-* **Smart Dictionary Merging**: Perform deep merges on nested dictionaries with configurable collision handling.
-* **Safe File Operations**: Write files atomically to prevent partial writes, with automated directory creation and SHA-256 checksum validation.
-* **String Case Transformer**: Convert text effortlessly between `camelCase`, `snake_case`, `PascalCase`, and `kebab-case`.
-* **Execution Profiling**: Measure block execution time with microsecond accuracy using lightweight context managers and decorators.
+*   **File System Helpers:** Simplified recursive directory searching and file type filtering with built-in error handling.
+*   **Performance Decorators:** Ready-to-use `@timer` and `@retry` decorators to track execution time and handle transient network failures gracefully.
+*   **Data Validation:** Lightweight schemas for validating configuration dictionaries and environment variables without heavy dependencies.
+*   **String Sanitization:** Optimized regex patterns for cleaning input, stripping whitespace, and normalizing file paths across different operating systems.
 
 ## Installation
 
-Install the package via `pip`:
+Install the package via pip:
 
 ```bash
 pip install python-utils-98
 ```
 
-Alternatively, install directly from source:
+Alternatively, if you are working within a virtual environment, ensure your dependencies are updated:
 
 ```bash
-git clone https://github.com/Developer/python-utils-98.git
-cd python-utils-98
-pip install .
+pip install --upgrade python-utils-98
 ```
 
-## Quick Start
+## Basic Usage
 
-Here is a quick example showing dictionary merging and string formatting in action:
+Import specific modules to handle routine tasks efficiently. The following example demonstrates using the timer decorator to profile a function:
 
 ```python
-from python_utils_98 import deep_merge, to_snake_case, SafeWriter
+from python_utils_98.decorators import timer
+from python_utils_98.files import list_files
 
-# Deep merge nested dictionaries
-base_config = {"db": {"host": "localhost", "port": 5432}}
-override_config = {"db": {"port": 5433, "user": "admin"}}
+# Use the timer to profile execution
+@timer
+def process_data():
+    files = list_files("./data", extension=".json")
+    return len(files)
 
-final_config = deep_merge(base_config, override_config)
-print(final_config)
-# Output: {'db': {'host': 'localhost', 'port': 5433, 'user': 'admin'}}
-
-# Normalize object keys
-raw_key = "userProfileSettings"
-clean_key = to_snake_case(raw_key)
-print(clean_key)
-# Output: 'user_profile_settings'
-
-# Safe atomic file write
-with SafeWriter("config.json") as writer:
-    writer.write('{"status": "ok"}')
+count = process_data()
+print(f"Processed {count} files.")
 ```
+
+## Requirements
+
+*   Python 3.8+
+*   No external dependencies; written in pure Python.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
