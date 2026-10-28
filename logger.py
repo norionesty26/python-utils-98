@@ -1,33 +1,37 @@
 import logging
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Optional
+import sys
+from typing import Any, Dict, Optional
 
-def setup_logger(
-    name: str,
-    log_file: str = "app.log",
-    level: int = logging.INFO,
-    max_bytes: int = 10 * 1024 * 1024,
-    backup_count: int = 5
-) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
 
-    if not logger.handlers:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
+class StructuredLogger:
+    def __init__(self, name: str = "app", level: int = logging.INFO):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter(
+                "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-        handler = RotatingFileHandler(
-            log_path,
-            maxBytes=max_bytes,
-            backupCount=backup_count,
-            encoding="utf-8"
-        )
-        
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+    def _format_extra(self, extra: Optional[Dict[str, Any]] = None) -> str:
+        if not extra:
+            return ""
+        return " | " + " ".join(f"{k}={v}" for k, v in extra.items())
 
-    return logger
+    def info(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        self.logger.info(f"{msg}{self._format_extra(extra)}")
+
+    def error(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        self.logger.error(f"{msg}{self._format_extra(extra)}")
+
+    def warning(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        self.logger.warning(f"{msg}{self._format_extra(extra)}")
+
+    def debug(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
+        self.logger.debug(f"{msg}{self._format_extra(extra)}")
+
+
+def get_logger(name: str = "app") -> StructuredLogger:
+    return StructuredLogger(name)
