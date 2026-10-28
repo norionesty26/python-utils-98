@@ -1,33 +1,34 @@
-import logging
-from typing import Any, Callable, Optional
+from typing import Any, Dict, List, Optional, Union
 
-logger = logging.getLogger(__name__)
 
-class ProcessingError(Exception):
-    pass
+def deep_update(source: Dict[Any, Any], overrides: Dict[Any, Any]) -> Dict[Any, Any]:
+    """Recursively updates a dictionary with nested overrides."""
+    for key, value in overrides.items():
+        if isinstance(value, dict) and value:
+            source[key] = deep_update(source.get(key, {}), value)
+        else:
+            source[key] = value
+    return source
 
-def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
-    try:
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, KeyError) as e:
-        logger.error(f"Data validation error: {e}")
-        return default
-    except Exception as e:
-        logger.critical(f"Unexpected system failure: {e}", exc_info=True)
-        raise ProcessingError(f"Critical failure during {func.__name__}") from e
 
-def validate_input(data: Optional[dict]) -> dict:
-    if not isinstance(data, dict):
-        raise ValueError("Input must be a dictionary")
+def sanitize_keys(data: Any, forbidden: List[str]) -> Any:
+    """Recursively removes sensitive keys from nested data structures."""
+    if isinstance(data, dict):
+        return {
+            k: sanitize_keys(v, forbidden) for k, v in data.items() if k not in forbidden
+        }
+    if isinstance(data, list):
+        return [sanitize_keys(item, forbidden) for item in data]
     return data
 
-def process_data(data: Any) -> Any:
-    try:
-        clean_data = validate_input(data)
-        return {k: v for k, v in clean_data.items() if v is not None}
-    except (ValueError, AttributeError) as e:
-        logger.warning(f"Invalid input format: {e}")
-        return {}
-    except Exception as e:
-        logger.error(f"Processing error: {e}")
-        raise
+
+def flatten_dict(data: Dict[Any, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flattens a nested dictionary into a single-level dictionary."""
+    items = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
