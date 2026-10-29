@@ -1,32 +1,29 @@
-import functools
-import random
-import time
-from typing import Any, Callable, Tuple, Type
+import logging
+from typing import Any, Dict, Optional
 
+logger = logging.getLogger(__name__)
 
-def retry(
-    max_retries: int = 3,
-    delay: float = 1.0,
-    backoff: float = 2.0,
-    jitter: bool = True,
-    exceptions: Tuple[Type[BaseException], ...] = (Exception,),
-) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            current_delay = delay
-            for attempt in range(1, max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as err:
-                    if attempt == max_retries:
-                        raise err
-                    sleep_time = current_delay
-                    if jitter:
-                        sleep_time += random.uniform(0, current_delay * 0.1)
-                    time.sleep(sleep_time)
-                    current_delay *= backoff
+class DataProcessor:
+    def __init__(self, settings: Optional[Dict[str, Any]] = None):
+        self.settings = settings or {}
 
-        return wrapper
+    def sanitize(self, data: Any) -> Any:
+        if isinstance(data, str):
+            return data.strip()
+        if isinstance(data, dict):
+            return {k: self.sanitize(v) for k, v in data.items()}
+        if isinstance(data, list):
+            return [self.sanitize(i) for i in data]
+        return data
 
-    return decorator
+    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            processed = self.sanitize(payload)
+            logger.info("processing complete")
+            return processed
+        except Exception as e:
+            logger.error(f"execution failure: {e}")
+            raise
+
+def get_instance(config: Optional[Dict[str, Any]] = None) -> DataProcessor:
+    return DataProcessor(config)
