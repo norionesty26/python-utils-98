@@ -1,37 +1,25 @@
 import logging
-import sys
-from typing import Any, Dict, Optional
+from functools import lru_cache
 
-
-class StructuredLogger:
-    def __init__(self, name: str = "app", level: int = logging.INFO):
+class PerformanceLogger:
+    def __init__(self, name: str = "app_logger"):
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                "[%(asctime)s] %(levelname)s in %(module)s: %(message)s"
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(handler)
 
-    def _format_extra(self, extra: Optional[Dict[str, Any]] = None) -> str:
-        if not extra:
-            return ""
-        return " | " + " ".join(f"{k}={v}" for k, v in extra.items())
+    @lru_cache(maxsize=128)
+    def get_logger(self, name: str):
+        return logging.getLogger(name)
 
-    def info(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
-        self.logger.info(f"{msg}{self._format_extra(extra)}")
+    def log_event(self, message: str, level: int = logging.INFO):
+        self.logger.log(level, message)
 
-    def error(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
-        self.logger.error(f"{msg}{self._format_extra(extra)}")
+_instance = PerformanceLogger()
 
-    def warning(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
-        self.logger.warning(f"{msg}{self._format_extra(extra)}")
+def get_logger(name: str = "default"):
+    return _instance.get_logger(name)
 
-    def debug(self, msg: str, extra: Optional[Dict[str, Any]] = None) -> None:
-        self.logger.debug(f"{msg}{self._format_extra(extra)}")
-
-
-def get_logger(name: str = "app") -> StructuredLogger:
-    return StructuredLogger(name)
+def log(message: str):
+    _instance.log_event(message)
