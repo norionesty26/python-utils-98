@@ -1,34 +1,30 @@
-from typing import Any, Dict, List, Optional, Union
+import logging
+from typing import Any, Dict, Optional
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def deep_update(source: Dict[Any, Any], overrides: Dict[Any, Any]) -> Dict[Any, Any]:
-    """Recursively updates a dictionary with nested overrides."""
-    for key, value in overrides.items():
-        if isinstance(value, dict) and value:
-            source[key] = deep_update(source.get(key, {}), value)
-        else:
-            source[key] = value
-    return source
+class DataHandler:
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+        self.data: Dict[str, Any] = {}
 
+    def update(self, key: str, value: Any) -> None:
+        if not isinstance(key, str):
+            raise ValueError("key must be a string")
+        self.data[key] = value
+        logger.info(f"Updated key: {key}")
 
-def sanitize_keys(data: Any, forbidden: List[str]) -> Any:
-    """Recursively removes sensitive keys from nested data structures."""
-    if isinstance(data, dict):
-        return {
-            k: sanitize_keys(v, forbidden) for k, v in data.items() if k not in forbidden
-        }
-    if isinstance(data, list):
-        return [sanitize_keys(item, forbidden) for item in data]
-    return data
+    def get(self, key: str) -> Any:
+        return self.data.get(key)
 
+    def clear(self) -> None:
+        self.data.clear()
+        logger.info("Handler state cleared")
 
-def flatten_dict(data: Dict[Any, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
-    """Flattens a nested dictionary into a single-level dictionary."""
-    items = []
-    for k, v in data.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+    def bulk_process(self, items: Dict[str, Any]) -> None:
+        for k, v in items.items():
+            self.update(k, v)
+
+def initialize_handler(config: Optional[Dict[str, Any]] = None) -> DataHandler:
+    return DataHandler(config)
