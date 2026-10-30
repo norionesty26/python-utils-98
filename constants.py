@@ -1,26 +1,25 @@
 import os
 from typing import Final
 
-# Application configuration constants
-APP_NAME: Final[str] = "python-utils-98"
+# Application paths
+BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR: Final[str] = os.path.join(BASE_DIR, 'logs')
+
+# Environment defaults
 DEFAULT_TIMEOUT: Final[int] = 30
 MAX_RETRIES: Final[int] = 3
 
-# Directory and path defaults
-BASE_DIR: Final[str] = os.path.dirname(os.path.abspath(__file__))
-LOG_DIR: Final[str] = os.path.join(BASE_DIR, "logs")
-TEMP_DIR: Final[str] = os.path.join(BASE_DIR, "temp")
+# Supported formats
+SUPPORTED_EXTENSIONS: Final[tuple[str, ...]] = ('.json', '.yaml', '.yml')
 
-# Content type and encoding definitions
-UTF_8: Final[str] = "utf-8"
-JSON_CONTENT_TYPE: Final[str] = "application/json"
+# Error messages
+ERR_INVALID_CONFIG: Final[str] = 'invalid configuration format provided'
+ERR_TIMEOUT_REACHED: Final[str] = 'operation timed out'
 
-# Validation constraints
-MIN_PASSWORD_LENGTH: Final[int] = 12
-ALLOWED_EXTENSIONS: Final[set[str]] = {".txt", ".csv", ".json", ".log"}
+class ConfigKeys:
+    DB_HOST: Final[str] = 'DB_HOST'
+    DB_PORT: Final[str] = 'DB_PORT'
+    API_KEY: Final[str] = 'API_KEY'
 
-def get_environment_config() -> dict[str, str]:
-    return {
-        "env": os.getenv("APP_ENV", "development"),
-        "debug": os.getenv("APP_DEBUG", "false"),
-    }
+# Internal constraints
+MAX_BUFFER_SIZE: Final[int] = 1024 * 1024
