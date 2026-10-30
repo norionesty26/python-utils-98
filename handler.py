@@ -1,30 +1,36 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Optional
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class DataHandler:
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or {}
-        self.data: Dict[str, Any] = {}
+class ProcessingError(Exception):
+    """Base exception for data processing."""
+    pass
 
-    def update(self, key: str, value: Any) -> None:
-        if not isinstance(key, str):
-            raise ValueError("key must be a string")
-        self.data[key] = value
-        logger.info(f"Updated key: {key}")
+def safe_execute(func: Callable, *args: Any, **kwargs: Any) -> Optional[Any]:
+    """Executes a callable with comprehensive error handling."""
+    if not callable(func):
+        logger.error("Provided object is not callable")
+        return None
 
-    def get(self, key: str) -> Any:
-        return self.data.get(key)
+    try:
+        return func(*args, **kwargs)
+    except (ValueError, TypeError) as err:
+        logger.error(f"Invalid input data: {err}")
+    except ConnectionError as err:
+        logger.warning(f"Network connectivity failure: {err}")
+    except Exception as err:
+        logger.critical(f"Unexpected system failure: {err}", exc_info=True)
+    return None
 
-    def clear(self) -> None:
-        self.data.clear()
-        logger.info("Handler state cleared")
-
-    def bulk_process(self, items: Dict[str, Any]) -> None:
-        for k, v in items.items():
-            self.update(k, v)
-
-def initialize_handler(config: Optional[Dict[str, Any]] = None) -> DataHandler:
-    return DataHandler(config)
+def validate_input(data: Any) -> bool:
+    """Checks input integrity before processing."""
+    try:
+        if data is None:
+            raise ValueError("Input data is null")
+        if not isinstance(data, (dict, list, str)):
+            raise TypeError("Unsupported data format")
+        return True
+    except (ValueError, TypeError) as err:
+        logger.error(f"Validation failed: {err}")
+        return False
