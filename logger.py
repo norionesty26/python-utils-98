@@ -1,25 +1,24 @@
 import logging
-from functools import lru_cache
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
-class PerformanceLogger:
-    def __init__(self, name: str = "app_logger"):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-        self.logger.addHandler(handler)
+def get_logger(name: str, log_file: str = "app.log", level: int = logging.INFO) -> logging.Logger:
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
 
-    @lru_cache(maxsize=128)
-    def get_logger(self, name: str):
-        return logging.getLogger(name)
+    if not logger.handlers:
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
-    def log_event(self, message: str, level: int = logging.INFO):
-        self.logger.log(level, message)
+        file_handler = RotatingFileHandler(
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=5
+        )
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
-_instance = PerformanceLogger()
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
 
-def get_logger(name: str = "default"):
-    return _instance.get_logger(name)
-
-def log(message: str):
-    _instance.log_event(message)
+    return logger
