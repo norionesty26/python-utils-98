@@ -1,31 +1,43 @@
-import functools
-from typing import Callable, Any, Dict
+import logging
 
 class DataProcessor:
-    def __init__(self) -> None:
-        self._cache: Dict[tuple, Any] = {}
+    def __init__(self, schema=None):
+        self.schema = schema or {}
 
-    @staticmethod
-    def memoize(func: Callable) -> Callable:
-        cache = {}
+    def validate_input(self, data):
+        if not isinstance(data, dict):
+            raise ValueError("input must be a dictionary")
+        for key, expected_type in self.schema.items():
+            if key not in data:
+                raise KeyError(f"missing required key: {key}")
+            if not isinstance(data[key], expected_type):
+                raise TypeError(f"invalid type for {key}: expected {expected_type.__name__}")
 
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            key = (args, tuple(sorted(kwargs.items())))
-            if key not in cache:
-                cache[key] = func(*args, **kwargs)
-            return cache[key]
-        return wrapper
+    def process_batch(self, items):
+        results = []
+        for item in items:
+            try:
+                self.validate_input(item)
+                results.append(self._execute(item))
+            except (ValueError, KeyError, TypeError) as e:
+                logging.error(f"validation failed: {e}")
+                continue
+        return results
 
-    def process_batch(self, data: list) -> list:
-        return [self._heavy_computation(item) for item in data]
+    def _execute(self, data):
+        return data.get("value", 0) * 2
 
-    @memoize
-    def _heavy_computation(self, n: int) -> int:
-        result = 0
-        for i in range(n):
-            result += i * i
-        return result
+def main():
+    schema = {"id": int, "value": int}
+    processor = DataProcessor(schema)
+    payload = [
+        {"id": 1, "value": 10},
+        {"id": 2, "value": "invalid"},
+        {"id": 3},
+        "invalid_item"
+    ]
+    output = processor.process_batch(payload)
+    print(f"processed {len(output)} items")
 
-    def optimize_sequence(self, sequence: list) -> list:
-        return sorted(list(set(sequence)), key=lambda x: x)
+if __name__ == "__main__":
+    main()
