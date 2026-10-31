@@ -1,29 +1,25 @@
 import logging
 from typing import Any, Dict, Optional
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class DataProcessor:
-    def __init__(self, settings: Optional[Dict[str, Any]] = None):
-        self.settings = settings or {}
+def validate_input(data: Any) -> bool:
+    return isinstance(data, dict) and 'id' in data and isinstance(data['id'], int)
 
-    def sanitize(self, data: Any) -> Any:
-        if isinstance(data, str):
-            return data.strip()
-        if isinstance(data, dict):
-            return {k: self.sanitize(v) for k, v in data.items()}
-        if isinstance(data, list):
-            return [self.sanitize(i) for i in data]
-        return data
+def process_item(item: Dict[str, Any]) -> None:
+    logger.info(f"Processing item: {item.get('id')}")
 
-    def execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+def run_processing_loop(items: list) -> None:
+    for item in items:
         try:
-            processed = self.sanitize(payload)
-            logger.info("processing complete")
-            return processed
+            if not validate_input(item):
+                logger.warning(f"Invalid input skipped: {item}")
+                continue
+            process_item(item)
         except Exception as e:
-            logger.error(f"execution failure: {e}")
-            raise
+            logger.error(f"Unexpected processing error: {e}")
 
-def get_instance(config: Optional[Dict[str, Any]] = None) -> DataProcessor:
-    return DataProcessor(config)
+if __name__ == '__main__':
+    data_stream = [{'id': 1}, {'id': 'invalid'}, {'id': 2}, None]
+    run_processing_loop(data_stream)
