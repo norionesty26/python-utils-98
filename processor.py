@@ -1,43 +1,47 @@
-import logging
+import random
+import time
+from functools import wraps
+from typing import Any, Callable, Tuple, Type, TypeVar
 
-class DataProcessor:
-    def __init__(self, schema=None):
-        self.schema = schema or {}
+T = TypeVar("T")
 
-    def validate_input(self, data):
-        if not isinstance(data, dict):
-            raise ValueError("input must be a dictionary")
-        for key, expected_type in self.schema.items():
-            if key not in data:
-                raise KeyError(f"missing required key: {key}")
-            if not isinstance(data[key], expected_type):
-                raise TypeError(f"invalid type for {key}: expected {expected_type.__name__}")
 
-    def process_batch(self, items):
-        results = []
-        for item in items:
-            try:
-                self.validate_input(item)
-                results.append(self._execute(item))
-            except (ValueError, KeyError, TypeError) as e:
-                logging.error(f"validation failed: {e}")
-                continue
-        return results
+class RetryError(Exception):
+    def __init__(self, last_exception: Exception, attempts: int) -> None:
+        self.last_exception = last_exception
+        self.attempts = attempts
+        super().__init__(
+            f"Operation failed after {attempts} attempts: {last_exception}"
+        )
 
-    def _execute(self, data):
-        return data.get("value", 0) * 2
 
-def main():
-    schema = {"id": int, "value": int}
-    processor = DataProcessor(schema)
-    payload = [
-        {"id": 1, "value": 10},
-        {"id": 2, "value": "invalid"},
-        {"id": 3},
-        "invalid_item"
-    ]
-    output = processor.process_batch(payload)
-    print(f"processed {len(output)} items")
+def retry(
+    exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    max_attempts: int = 3,
+    delay: float = 1.0,
+    backoff: float = 2.0,
+    jitter: bool = True,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> T:
+            current_delay = delay
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as exc:
+                    if attempt == max_attempts:
+                        raise RetryError(exc, attempts=max_attempts) from exc
+                    sleep_time = current_delay
+                    if jitter:
+                        sleep_time += random.uniform(0, current_delay * 0.1)
+                    time.sleep(sleep_time)
+                    current_delay *= backoff
+            raise RetryError(
+                RuntimeError("Unexpected retry loop termination"),
+                attempts=max_attempts,
+            )
 
-if __name__ == "__main__":
-    main()
+        return wrapper
+
+    return decorator
